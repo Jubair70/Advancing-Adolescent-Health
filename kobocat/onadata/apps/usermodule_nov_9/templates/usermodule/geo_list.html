@@ -1,0 +1,58 @@
+{% extends 'base_test.html' %}
+{% load i18n %}
+{% block additional-headers %}
+    <link rel="stylesheet" href="{{ STATIC_URL }}assets/plugins/data-tables/DT_bootstrap.css"/>
+{% endblock %}
+
+
+
+{% block content %}
+
+    <div class="portlet box red">
+        <div class="portlet-title">
+            <div class="caption"><i class="fa fa-adn"></i>Geo List</div>
+        </div>
+        <div class="portlet-body">
+         <div class="row">
+             <div class="col-md-12">
+                 <a href="/usermodule/geo_form/"><button type="submit" class="btn btn-info pull-left" id="add_new" data-original-title=""
+                         title="">Add New
+                 </button></a>
+             </div>
+         </div>
+          <br>
+            <table id="geo_def_table" class="table table-bordered table-striped table-condensed flip-content">
+                <thead class="flip-content">
+                <tr>
+                    <th>Field Name</th>
+                    <th>Field Type</th>
+                    <th>Geo Code</th>
+
+                </tr>
+                </thead>
+                <tbody>
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+{% endblock %}
+
+
+
+
+{% block additional-javascript %}
+<script type="text/javascript" src="{{STATIC_URL}}assets/plugins/data-tables/jquery.dataTables.js"></script>
+<script type="text/javascript" src="{{STATIC_URL}}assets/plugins/data-tables/DT_bootstrap.js"></script>
+    <script>
+    var tbody = '';
+    var geo_def_data = {{ geo_def_data|safe }};
+
+    for(var idx in geo_def_data){
+        tbody += '<tr><td>'+geo_def_data[idx].field_name+'</td><td>'+geo_def_data[idx].field_type+'</td><td>'+geo_def_data[idx].geocode+'</td></tr>';
+    }
+
+    $("#geo_def_table").find('tbody').html(tbody);
+    </script>
+{% endblock %}
