@@ -13,7 +13,7 @@ import json
 import logging
 import sys
 from django.core.urlresolvers import reverse
-
+import time
 import csv
 # Create your views here.
 from django.db import (IntegrityError,transaction)
@@ -948,9 +948,14 @@ def role_menu_map_index(request):
                 menu_dict[role.id] = org_menu_list
         else:
             menu_items = MenuItem.objects.all()
-            roles = OrganizationRole.objects.all()
+            current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+            if current_user:
+                current_user = current_user[0]
+            all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+            org_id_list = [org.pk for org in all_organizations]
+            roles = OrganizationRole.objects.filter(organization__in=org_id_list)
             for role in roles:
-                org_menu_list = MenuRoleMap.objects.filter(role = role.id).values_list('menu_id', flat=True)
+                org_menu_list = MenuRoleMap.objects.filter(role=role.id).values_list('menu_id', flat=True)
                 menu_dict[role.id] = org_menu_list
 
         return render_to_response(
@@ -1182,6 +1187,86 @@ def sent_datalist(request,username):
 #################################################################
 import thread
 import threading
+
+@login_required
+def add_children(request):
+    id = request.POST.get('id')
+    query = "select id,field_name from geo_data where field_parent_id = " + str(id) + ""
+    df = pandas.read_sql(query, connection)
+    id_ch = df.id.tolist()
+    name = df.field_name.tolist()
+    all = zip(id_ch, name)
+    list_of_dictionary = []
+    for id_ch,name in all:
+        query = "select id from geo_data where field_parent_id =" + str(id_ch)+ "limit 1"
+        df = pandas.read_sql(query, connection)
+        if len(df.id.tolist()):
+            true = True
+        else: true = False
+        temp = {"id": id_ch, "text": name, "hasChildren": true, "children": []}
+        list_of_dictionary.append(temp)
+    return HttpResponse(json.dumps({'id': id,'list_of_dictionary': list_of_dictionary}))
+
+@login_required
+def catchment_tree_test(request,user_id):
+    query = "select * from geo_data where field_parent_id is null"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    id = df.id.tolist()
+    name = df.field_name.tolist()
+    all = zip(id,name)
+    list_of_dictionary = []
+    start  = time.time()
+    for id,name in all:
+        query = "select id from geo_data where field_parent_id =" + str(id)+ "limit 1"
+        df = pandas.read_sql(query, connection)
+        if len(df.id.tolist()):
+            true = True
+        else:
+            true = False
+        temp = {"id": id, "text": name,"hasChildren":true, "children": []}
+        list_of_dictionary.append(temp)
+    datasource = json.dumps({'list_of_dictionary': list_of_dictionary})
+    check_nodes = get_check_nodes(user_id)
+    json_content_dictionary = []
+    for each in check_nodes:
+        if each:
+            query_for_json = "select uploaded_file_path from geo_data where id = " + str(each) + ""
+            df = pandas.DataFrame()
+            df = pandas.read_sql(query_for_json, connection)
+            uploaded_file_path = df.uploaded_file_path.tolist()[0]
+            if uploaded_file_path != "cd":
+                file = open(uploaded_file_path, 'r')
+                json_content = file.read()
+                file.close()
+            else:
+                json_content = "{}"
+            json_content_dictionary.append(json_content)
+    print("END    "+str(time.time()-start))
+    query = "select (SELECT  organization FROM public.usermodule_organizations where id = (select organisation_name_id from usermodule_usermoduleprofile where user_id = " + str(
+        user_id) + ")) ,(select employee_id from usermodule_usermoduleprofile where user_id = " + str(
+        user_id) + "),(select country from usermodule_usermoduleprofile where user_id = " + str(
+        user_id) + "),(select position from usermodule_usermoduleprofile where user_id = " + str(
+        user_id) + "),username, email from auth_user where id=" + str(user_id) + ""
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    organization = df.organization.tolist()[0]
+    employee_id = df.employee_id.tolist()[0]
+    country = df.country.tolist()[0]
+    position = df.position.tolist()[0]
+    username = df.username.tolist()[0]
+    email = df.email.tolist()[0]
+    return render(request, "usermodule/catchment_tree_test.html", {'datasource': datasource
+        , 'organization': organization
+        , 'employee_id': employee_id
+        , 'country': country
+        , 'position': position
+        , 'username': username
+        , 'email': email
+        , 'user_id': user_id
+        , 'check_nodes': check_nodes,'json_content': json_content_dictionary})
+
+
 @login_required
 def catchment_tree(request, user_id):
     query = "select * from geo_data where field_parent_id is null"
@@ -1249,6 +1334,7 @@ def catchment_data_insert(request):
     result_set = request.POST.get('result_set').split(',')
     user_id = int(request.POST.get('user_id'))
     delete_prev_catchment_record(user_id)
+    result_set = list(set(result_set))
     for each in result_set:
         if each:
             query = "INSERT INTO public.usermodule_catchment_area (user_id, geoid) VALUES(" + str(user_id) + ", " + str(
