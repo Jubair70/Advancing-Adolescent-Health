@@ -84,6 +84,7 @@
             for (var idx in geo_def_data) {
                 if (geo_def_data[idx].node_parent_name != null)
                     tbody += '<tr><td>' + geo_def_data[idx].node_name + '</td><td>' + geo_def_data[idx].node_parent_name + '</td> </tr>';
+                else tbody += '<tr><td>' + geo_def_data[idx].node_name + '</td><td>Root</td> </tr>';
 
 
                 /*<td class="td-center">\n' +
