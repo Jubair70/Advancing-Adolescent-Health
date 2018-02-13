@@ -1,5 +1,6 @@
 /.idea
 /kobocat/onadata/media
+/kobocat/onadata/settings/common.py
 *~
 *.swp
 *.swo
