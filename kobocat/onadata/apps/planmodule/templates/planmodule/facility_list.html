@@ -30,7 +30,7 @@
                     <th>Registration Date</th>
                     <th>District</th>
                     <th>Upazila</th>
-                    <th>Union</th>
+
                     <th>Facility Name</th>
                     <th>Facility ID</th>
                     <th>Facility Type</th>
@@ -85,7 +85,7 @@
         var facility_list = {{ facility_list|safe }};
 
         for (var idx in facility_list) {
-            tbody += '<tr><td>' + facility_list[idx].registration_date + '</td><td>' + facility_list[idx].district + '</td><td>' + facility_list[idx].upazilla + '</td><td>' + facility_list[idx].xunion + '</td><td>' + facility_list[idx].facilty_name + '</td><td>' + facility_list[idx].facilty_id + '</td><td>' + facility_list[idx].facility_type + '</td><td class="td-center"><a class="tooltips" data-placement="top" data-original-title="Edit" href="/planmodule/edit_facility_form/' + facility_list[idx].id + '"><i class="fa fa-2x fa-pencil-square-o"></i></a><a class="delete-item tooltips" data-placement="top" data-toggle="modal" data-target="#confirm-delete" data-original-title="Delete" href="#" data-href="/planmodule/delete_facility_form/' + facility_list[idx].id + '"><i class="fa fa-2x fa-trash-o"></i></a></td></tr>';
+            tbody += '<tr><td>' + facility_list[idx].registration_date + '</td><td>' + facility_list[idx].district + '</td><td>' + facility_list[idx].upazilla + '</td><td>' + facility_list[idx].facilty_name + '</td><td>' + facility_list[idx].facilty_id + '</td><td>' + facility_list[idx].facility_type + '</td><td class="td-center"><a class="tooltips" data-placement="top" data-original-title="Edit" href="/planmodule/edit_facility_form/' + facility_list[idx].id + '"><i class="fa fa-2x fa-pencil-square-o"></i></a><a class="delete-item tooltips" data-placement="top" data-toggle="modal" data-target="#confirm-delete" data-original-title="Delete" href="#" data-href="/planmodule/delete_facility_form/' + facility_list[idx].id + '"><i class="fa fa-2x fa-trash-o"></i></a></td></tr>';
         }
 
         $("#all_info_table").find('tbody').html(tbody);

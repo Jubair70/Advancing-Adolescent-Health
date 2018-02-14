@@ -107,7 +107,7 @@ def index(request):
 
 
 def facility_list(request):
-    query = "select id,DATE(registration_date) registration_date, (select field_name from geo_data where id = district) district,(select field_name from geo_data where id = upazilla) upazilla,(select field_name from geo_data where id = xunion) xunion, facilty_name, facilty_id,facility_type from plan_facilities"
+    query = "select id,DATE(registration_date) registration_date, (select field_name from geo_data where id = district) district,(select field_name from geo_data where id = upazilla) upazilla, facilty_name, facilty_id,Case when facility_type = 1 then 'FWCC' else 'CC' end facility_type from plan_facilities"
     facility_list = json.dumps(__db_fetch_values_dict(query),default= decimal_date_default)
 
     return render(request, 'planmodule/facility_list.html',{
@@ -122,9 +122,17 @@ def add_facility_form(request):
     dist_id = df.id.tolist()
     dist_name = df.field_name.tolist()
     district = zip(dist_id, dist_name)
-
-    print(district)
-    return render(request,'planmodule/add_facility_form.html',{'district':district})
+    user = request.user
+    user_query = "select id from auth_user where username='" + str(user) + "'"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(user_query, connection)
+    user_id = df.id.tolist()[0]
+    query = "select id,organization from public.usermodule_organizations where id = ( select organisation_name_id from public.usermodule_usermoduleprofile where user_id = "+str(user_id)+")"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    org_id = df.id.tolist()[0]
+    org_name = df.organization.tolist()[0]
+    return render(request,'planmodule/add_facility_form.html',{'district':district,'org_id':org_id,'org_name':org_name})
 
 
 def insert_facility_form(request):
@@ -132,22 +140,23 @@ def insert_facility_form(request):
         registration_date = request.POST.get('registration_date')
         district = request.POST.get('district')
         upazilla = request.POST.get('upazila')
-        union = request.POST.get('union')
+        # union = request.POST.get('union')
         facilty_name = request.POST.get('facility_name')
         facilty_id = request.POST.get('facility_id')
         facility_type = request.POST.get('facility_type')
+        pngo_id = request.POST.get('org_id')
         user = request.user
         user_query = "select id from auth_user where username='"+str(user)+"'"
         df = pandas.DataFrame()
         df = pandas.read_sql(user_query, connection)
         user_id = df.id.tolist()[0]
-        insert_query = "INSERT INTO public.plan_facilities (registration_date, district, upazilla, xunion, facilty_name, facilty_id,facility_type,created_by) VALUES('"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(union)+", '"+str(facilty_name)+"', '"+str(facilty_id)+"','"+str(facility_type)+"',"+str(user_id)+")"
+        insert_query = "INSERT INTO public.plan_facilities (registration_date, district, upazilla,  facilty_name, facilty_id,facility_type,created_by,pngo_id) VALUES('"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", '"+str(facilty_name)+"', '"+str(facilty_id)+"','"+str(facility_type)+"',"+str(user_id)+","+str(pngo_id)+")"
         __db_commit_query(insert_query)
     return HttpResponseRedirect("/planmodule/facility_list/")
 
 
 def edit_facility_form(request,form_id):
-    query = "select DATE(registration_date) registration_date,(select field_name from geo_data where id = district) district_name,(select field_name from geo_data where id = upazilla) upazilla_name,(select field_name from geo_data where id = xunion) union_name,  district, upazilla, xunion, facilty_name, facilty_id,facility_type from plan_facilities where id="+str(form_id)+""
+    query = "select DATE(registration_date) registration_date,(select field_name from geo_data where id = district) district_name,(select field_name from geo_data where id = upazilla) upazilla_name,  district, upazilla,  facilty_name, facilty_id,facility_type from plan_facilities where id="+str(form_id)+""
     df = pandas.DataFrame()
     df = pandas.read_sql(query,connection)
     data = {}
@@ -160,8 +169,8 @@ def edit_facility_form(request,form_id):
     district_name = df.district_name.tolist()[0]
     upazila_id = df.upazilla.tolist()[0]
     upazilla_name = df.upazilla_name.tolist()[0]
-    xunion_id = df.xunion.tolist()[0]
-    xunion_name = df.union_name.tolist()[0]
+    # xunion_id = df.xunion.tolist()[0]
+    # xunion_name = df.union_name.tolist()[0]
 
 
     query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = "+str(district_id)
@@ -171,14 +180,19 @@ def edit_facility_form(request,form_id):
     upz_name = df.field_name.tolist()
     upazila = zip(upz_id, upz_name)
 
-    query = "select id,field_name from geo_data where field_type_id = 89 "
+    # query = "select id,field_name from geo_data where field_type_id = 89 "
+    # df = pandas.DataFrame()
+    # df = pandas.read_sql(query, connection)
+    # union_id = df.id.tolist()
+    # union_name = df.field_name.tolist()
+    # union = zip(union_id, union_name)
+
+    query = "select id,organization from public.usermodule_organizations where id = (select pngo_id from public.plan_facilities where id = "+str(form_id)+")"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
-    union_id = df.id.tolist()
-    union_name = df.field_name.tolist()
-    union = zip(union_id, union_name)
-
-    return render(request,'planmodule/edit_facility_form.html',{'data':json.dumps(data,default=decimal_date_default),'district_id':district_id,'district_name':district_name,'upazila_id':upazila_id,'upazilla_name':upazilla_name,'xunion_id':xunion_id,'xunion_name':xunion_name,'upazila':upazila,'union':union})
+    org_id = df.id.tolist()[0]
+    org_name = df.organization.tolist()[0]
+    return render(request,'planmodule/edit_facility_form.html',{'data':json.dumps(data,default=decimal_date_default),'district_id':district_id,'district_name':district_name,'upazila_id':upazila_id,'upazilla_name':upazilla_name,'upazila':upazila,'org_id':org_id,'org_name':org_name})
 
 
 def update_facility_form(request):
@@ -187,16 +201,17 @@ def update_facility_form(request):
         registration_date = request.POST.get('registration_date')
         district = request.POST.get('district')
         upazilla = request.POST.get('upazila')
-        union = request.POST.get('union')
+        # union = request.POST.get('union')
         facilty_name = request.POST.get('facility_name')
         facilty_id = request.POST.get('facility_id')
         facility_type = request.POST.get('facility_type')
+        pngo_id = request.POST.get('org_id')
         user = request.user
         user_query = "select id from auth_user where username='" + str(user) + "'"
         df = pandas.DataFrame()
         df = pandas.read_sql(user_query, connection)
         user_id = df.id.tolist()[0]
-        update_query = "UPDATE public.plan_facilities SET registration_date='"+str(registration_date)+"', district="+str(district)+", upazilla="+str(upazilla)+", xunion="+str(union)+", facilty_name='"+str(facilty_name)+"', facilty_id='"+str(facilty_id)+"', created_at=now(), created_by="+str(user_id)+" WHERE id="+str(form_id)
+        update_query = "UPDATE public.plan_facilities SET registration_date='"+str(registration_date)+"', district="+str(district)+", upazilla="+str(upazilla)+",  facilty_name='"+str(facilty_name)+"', facilty_id='"+str(facilty_id)+"', created_at=now(),facility_type="+str(facility_type)+", created_by="+str(user_id)+",pngo_id = "+str(pngo_id)+" WHERE id="+str(form_id)
         __db_commit_query(update_query)
     return HttpResponseRedirect("/planmodule/facility_list/")
 
