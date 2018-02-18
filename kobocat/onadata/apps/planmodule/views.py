@@ -22,7 +22,6 @@ from django.core.files.storage import FileSystemStorage
 
 from django.core.urlresolvers import reverse
 
-
 from django.db import (IntegrityError, transaction)
 from django.db.models import ProtectedError
 from django.shortcuts import redirect
@@ -124,10 +123,11 @@ def facility_list(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "select id,DATE(registration_date) registration_date, (select field_name from geo_data where id = district) district,(select field_name from geo_data where id = upazilla) upazilla, facilty_name, facilty_id,Case when facility_type = 1 then 'FWCC' else 'CC' end facility_type from plan_facilities where pngo_id in "+str(org)
-    facility_list = json.dumps(__db_fetch_values_dict(query),default= decimal_date_default)
+    query = "select id,DATE(registration_date) registration_date, (select field_name from geo_data where id = district) district,(select field_name from geo_data where id = upazilla) upazilla, facilty_name, facilty_id,Case when facility_type = 1 then 'FWCC' else 'CC' end facility_type from plan_facilities where pngo_id in " + str(
+        org)
+    facility_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
 
-    return render(request, 'planmodule/facility_list.html',{
+    return render(request, 'planmodule/facility_list.html', {
         'facility_list': facility_list
     })
 
@@ -140,12 +140,14 @@ def add_facility_form(request):
     dist_name = df.field_name.tolist()
     district = zip(dist_id, dist_name)
     user_id = request.user.id
-    query = "select id,organization from public.usermodule_organizations where id = ( select organisation_name_id from public.usermodule_usermoduleprofile where user_id = "+str(user_id)+")"
+    query = "select id,organization from public.usermodule_organizations where id = ( select organisation_name_id from public.usermodule_usermoduleprofile where user_id = " + str(
+        user_id) + ")"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     org_id = df.id.tolist()[0]
     org_name = df.organization.tolist()[0]
-    return render(request,'planmodule/add_facility_form.html',{'district':district,'org_id':org_id,'org_name':org_name})
+    return render(request, 'planmodule/add_facility_form.html',
+                  {'district': district, 'org_id': org_id, 'org_name': org_name})
 
 
 def insert_facility_form(request):
@@ -159,15 +161,19 @@ def insert_facility_form(request):
         facility_type = request.POST.get('facility_type')
         pngo_id = request.POST.get('org_id')
         user_id = request.user.id
-        insert_query = "INSERT INTO public.plan_facilities (registration_date, district, upazilla,  facilty_name, facilty_id,facility_type,created_by,pngo_id) VALUES('"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", '"+str(facilty_name)+"', '"+str(facilty_id)+"','"+str(facility_type)+"',"+str(user_id)+","+str(pngo_id)+")"
+        insert_query = "INSERT INTO public.plan_facilities (registration_date, district, upazilla,  facilty_name, facilty_id,facility_type,created_by,pngo_id) VALUES('" + str(
+            registration_date) + "', " + str(district) + ", " + str(upazilla) + ", '" + str(
+            facilty_name) + "', '" + str(facilty_id) + "','" + str(facility_type) + "'," + str(user_id) + "," + str(
+            pngo_id) + ")"
         __db_commit_query(insert_query)
     return HttpResponseRedirect("/planmodule/facility_list/")
 
 
-def edit_facility_form(request,form_id):
-    query = "select DATE(registration_date) registration_date,(select field_name from geo_data where id = district) district_name,(select field_name from geo_data where id = upazilla) upazilla_name,  district, upazilla,  facilty_name, facilty_id,facility_type from plan_facilities where id="+str(form_id)+""
+def edit_facility_form(request, form_id):
+    query = "select DATE(registration_date) registration_date,(select field_name from geo_data where id = district) district_name,(select field_name from geo_data where id = upazilla) upazilla_name,  district, upazilla,  facilty_name, facilty_id,facility_type from plan_facilities where id=" + str(
+        form_id) + ""
     df = pandas.DataFrame()
-    df = pandas.read_sql(query,connection)
+    df = pandas.read_sql(query, connection)
     data = {}
     data['form_id'] = form_id
     data['registration_date'] = df.registration_date.tolist()[0]
@@ -182,7 +188,7 @@ def edit_facility_form(request,form_id):
     # xunion_name = df.union_name.tolist()[0]
 
 
-    query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = "+str(district_id)
+    query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = " + str(district_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     upz_id = df.id.tolist()
@@ -196,12 +202,16 @@ def edit_facility_form(request,form_id):
     # union_name = df.field_name.tolist()
     # union = zip(union_id, union_name)
 
-    query = "select id,organization from public.usermodule_organizations where id = (select pngo_id from public.plan_facilities where id = "+str(form_id)+")"
+    query = "select id,organization from public.usermodule_organizations where id = (select pngo_id from public.plan_facilities where id = " + str(
+        form_id) + ")"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     org_id = df.id.tolist()[0]
     org_name = df.organization.tolist()[0]
-    return render(request,'planmodule/edit_facility_form.html',{'data':json.dumps(data,default=decimal_date_default),'district_id':district_id,'district_name':district_name,'upazila_id':upazila_id,'upazilla_name':upazilla_name,'upazila':upazila,'org_id':org_id,'org_name':org_name})
+    return render(request, 'planmodule/edit_facility_form.html',
+                  {'data': json.dumps(data, default=decimal_date_default), 'district_id': district_id,
+                   'district_name': district_name, 'upazila_id': upazila_id, 'upazilla_name': upazilla_name,
+                   'upazila': upazila, 'org_id': org_id, 'org_name': org_name})
 
 
 def update_facility_form(request):
@@ -216,18 +226,19 @@ def update_facility_form(request):
         facility_type = request.POST.get('facility_type')
         pngo_id = request.POST.get('org_id')
         user_id = request.user.id
-        update_query = "UPDATE public.plan_facilities SET registration_date='"+str(registration_date)+"', district="+str(district)+", upazilla="+str(upazilla)+",  facilty_name='"+str(facilty_name)+"', facilty_id='"+str(facilty_id)+"', created_at=now(),facility_type="+str(facility_type)+", created_by="+str(user_id)+",pngo_id = "+str(pngo_id)+" WHERE id="+str(form_id)
+        update_query = "UPDATE public.plan_facilities SET registration_date='" + str(
+            registration_date) + "', district=" + str(district) + ", upazilla=" + str(
+            upazilla) + ",  facilty_name='" + str(facilty_name) + "', facilty_id='" + str(
+            facilty_id) + "', created_at=now(),facility_type=" + str(facility_type) + ", created_by=" + str(
+            user_id) + ",pngo_id = " + str(pngo_id) + " WHERE id=" + str(form_id)
         __db_commit_query(update_query)
     return HttpResponseRedirect("/planmodule/facility_list/")
 
 
-def delete_facility_form(request,facility_id):
+def delete_facility_form(request, facility_id):
     delete_query = "delete from plan_facilities where id = " + str(facility_id) + ""
     __db_commit_query(delete_query)
     return HttpResponseRedirect("/planmodule/facility_list/")
-
-
-
 
 
 def getUpazilas(request):
@@ -235,6 +246,7 @@ def getUpazilas(request):
     upazila_query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = " + str(district)
     upazila_data = json.dumps(__db_fetch_values_dict(upazila_query))
     return HttpResponse(upazila_data)
+
 
 def getUnions(request):
     upazila = request.POST.get('upz')
@@ -253,13 +265,13 @@ def scorecard_list(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in "+str(org)
-    scorecard_list = json.dumps(__db_fetch_values_dict(query),default= decimal_date_default)
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(
+        org)
+    scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
 
-    return render(request, 'planmodule/scorecard_list.html',{
+    return render(request, 'planmodule/scorecard_list.html', {
         'scorecard_list': scorecard_list
     })
-
 
 
 def add_scorecard_form(request):
@@ -270,7 +282,8 @@ def add_scorecard_form(request):
     dist_name = df.field_name.tolist()
     district = zip(dist_id, dist_name)
     user_id = request.user.id
-    query = "select id,organization from public.usermodule_organizations where id = ( select organisation_name_id from public.usermodule_usermoduleprofile where user_id = "+str(user_id)+")"
+    query = "select id,organization from public.usermodule_organizations where id = ( select organisation_name_id from public.usermodule_usermoduleprofile where user_id = " + str(
+        user_id) + ")"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     org_id = df.id.tolist()[0]
@@ -282,7 +295,9 @@ def add_scorecard_form(request):
     facility_id = df.facilty_id.tolist()
     facility_name = df.facilty_name.tolist()
     facility = zip(facility_id, facility_name)
-    return render(request,'planmodule/add_scorecard_form.html',{'district':district,'org_id':org_id,'org_name':org_name,'facility':facility})
+    return render(request, 'planmodule/add_scorecard_form.html',
+                  {'district': district, 'org_id': org_id, 'org_name': org_name, 'facility': facility})
+
 
 def getType(request):
     facility_id = request.POST.get('obj')
@@ -308,17 +323,24 @@ def insert_scorecard_form(request):
         average_score_service_providers = request.POST.get('average_score_service_providers')
         major_comments_adolescents = request.POST.get('major_comments_adolescents')
         major_comments_service_providers = request.POST.get('major_comments_service_providers')
-        print pngo_id
-        insert_query = "INSERT INTO public.plan_scorecard ( district, upazilla, pngo_id, execution_date, from_date, to_date, facility_id, facility_type, average_score_adolescents, average_score_service_providers, major_comments_adolescents, major_comments_service_providers, created_by, updated_by, created_at, updated_at) VALUES("+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", '"+str(execution_date)+"', '"+str(from_date)+"', '"+str(to_date)+"', "+str(facility_id)+", "+str(facility_type)+", "+str(average_score_adolescents)+", "+str(average_score_service_providers)+", '"+str(major_comments_adolescents)+"', '"+str(major_comments_service_providers)+"', "+str(created_by)+", "+str(updated_by)+",now(),now())"
+        print
+        pngo_id
+        insert_query = "INSERT INTO public.plan_scorecard ( district, upazilla, pngo_id, execution_date, from_date, to_date, facility_id, facility_type, average_score_adolescents, average_score_service_providers, major_comments_adolescents, major_comments_service_providers, created_by, updated_by, created_at, updated_at) VALUES(" + str(
+            district) + ", " + str(upazilla) + ", " + str(pngo_id) + ", '" + str(execution_date) + "', '" + str(
+            from_date) + "', '" + str(to_date) + "', " + str(facility_id) + ", " + str(facility_type) + ", " + str(
+            average_score_adolescents) + ", " + str(average_score_service_providers) + ", '" + str(
+            major_comments_adolescents) + "', '" + str(major_comments_service_providers) + "', " + str(
+            created_by) + ", " + str(updated_by) + ",now(),now())"
         print(insert_query)
         __db_commit_query(insert_query)
     return HttpResponseRedirect("/planmodule/scorecard_list/")
 
 
-def edit_scorecard_form(request,scorecard_id):
-    query = "select id,district,(select field_name from public.geo_data where id = district) district_name,upazilla,(select field_name from public.geo_data where id = upazilla) upazilla_name,DATE(execution_date) execution_date,from_date,to_date,facility_id,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name, facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where id="+str(scorecard_id)
+def edit_scorecard_form(request, scorecard_id):
+    query = "select id,district,(select field_name from public.geo_data where id = district) district_name,upazilla,(select field_name from public.geo_data where id = upazilla) upazilla_name,DATE(execution_date) execution_date,from_date,to_date,facility_id,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name, facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where id=" + str(
+        scorecard_id)
     df = pandas.DataFrame()
-    df = pandas.read_sql(query,connection)
+    df = pandas.read_sql(query, connection)
     data = {}
     data['scorecard_id'] = scorecard_id
     execution_date = df.execution_date.tolist()[0]
@@ -337,14 +359,15 @@ def edit_scorecard_form(request,scorecard_id):
     set_facility_name = df.facility_name.tolist()[0]
     # print(data['execution_date'])
 
-    query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = "+str(district_id)
+    query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = " + str(district_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     upz_id = df.id.tolist()
     upz_name = df.field_name.tolist()
     upazila = zip(upz_id, upz_name)
 
-    query = "select id,organization from public.usermodule_organizations where id = (select pngo_id from public.plan_scorecard where id = "+str(scorecard_id)+")"
+    query = "select id,organization from public.usermodule_organizations where id = (select pngo_id from public.plan_scorecard where id = " + str(
+        scorecard_id) + ")"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     org_id = df.id.tolist()[0]
@@ -356,14 +379,12 @@ def edit_scorecard_form(request,scorecard_id):
     facility_id = df.facilty_id.tolist()
     facility_name = df.facilty_name.tolist()
     facility = zip(facility_id, facility_name)
-
-    print(facility)
     return render(request, 'planmodule/edit_scorecard_form.html',
                   {'data': json.dumps(data, default=decimal_date_default), 'district_id': district_id,
                    'district_name': district_name, 'upazila_id': upazila_id, 'upazilla_name': upazilla_name,
                    'upazila': upazila, 'org_id': org_id, 'org_name': org_name, 'set_facility_id': set_facility_id,
-                   'set_facility_name': set_facility_name,'facility':facility,'execution_date':execution_date
-                   ,'from_date':from_date,'to_date':to_date})
+                   'set_facility_name': set_facility_name, 'facility': facility, 'execution_date': execution_date
+                      , 'from_date': from_date, 'to_date': to_date})
 
 
 def update_scorecard_form(request):
@@ -382,12 +403,67 @@ def update_scorecard_form(request):
         average_score_service_providers = request.POST.get('average_score_service_providers')
         major_comments_adolescents = request.POST.get('major_comments_adolescents')
         major_comments_service_providers = request.POST.get('major_comments_service_providers')
-        update_query ="UPDATE public.plan_scorecard SET district="+str(district)+", upazilla="+str(upazilla)+", pngo_id="+str(pngo_id)+", execution_date='"+str(execution_date)+"', facility_id="+str(facility_id)+", facility_type="+str(facility_type)+", average_score_adolescents="+str(average_score_adolescents)+", average_score_service_providers="+str(average_score_service_providers)+", major_comments_adolescents='"+str(major_comments_adolescents)+"', major_comments_service_providers='"+str(major_comments_service_providers)+"',  updated_by="+str(updated_by)+", updated_at=now(), from_date='"+str(from_date)+"', to_date='"+str(to_date)+"' WHERE id=" +str(scorecard_id)
+        update_query = "UPDATE public.plan_scorecard SET district=" + str(district) + ", upazilla=" + str(
+            upazilla) + ", pngo_id=" + str(pngo_id) + ", execution_date='" + str(
+            execution_date) + "', facility_id=" + str(facility_id) + ", facility_type=" + str(
+            facility_type) + ", average_score_adolescents=" + str(
+            average_score_adolescents) + ", average_score_service_providers=" + str(
+            average_score_service_providers) + ", major_comments_adolescents='" + str(
+            major_comments_adolescents) + "', major_comments_service_providers='" + str(
+            major_comments_service_providers) + "',  updated_by=" + str(
+            updated_by) + ", updated_at=now(), from_date='" + str(from_date) + "', to_date='" + str(
+            to_date) + "' WHERE id=" + str(scorecard_id)
         __db_commit_query(update_query)
     return HttpResponseRedirect("/planmodule/scorecard_list/")
 
 
-def delete_scorecard_form(request,scorecard_id):
+def delete_scorecard_form(request, scorecard_id):
     delete_query = "delete from plan_scorecard where id = " + str(scorecard_id) + ""
     __db_commit_query(delete_query)
     return HttpResponseRedirect("/planmodule/scorecard_list/")
+
+
+def scorecard_report(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(org)
+    scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    query_pngo = "select id,organization from public.usermodule_organizations where id in "+str(org)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_pngo,connection)
+    org_id = df.id.tolist()
+    org_name = df.organization.tolist()
+    organization = zip(org_id,org_name)
+
+    query = "select id,field_name from geo_data where field_type_id = 88 "
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    upz_id = df.id.tolist()
+    upz_name = df.field_name.tolist()
+    upazila = zip(upz_id, upz_name)
+
+    return render(request, 'planmodule/scorecard_report.html', {
+        'scorecard_list': scorecard_list,'organization':organization,'upazila':upazila
+    })
+
+
+def getScoreCardData(request):
+    from_date = request.POST.get('from_date')
+    to_date = request.POST.get('to_date')
+    upazila = request.POST.get('upazila')
+    pngo = request.POST.get('pngo')
+    filter_query = "where  execution_date between '" + str(from_date) + "' and '" + str(to_date) + "'"
+    if upazila !="":
+        filter_query += " and upazilla = "+str(upazila)
+    if pngo !="":
+        filter_query += " and pngo_id = "+str(pngo)
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
+    scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    return HttpResponse(scorecard_list)
