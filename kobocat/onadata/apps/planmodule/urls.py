@@ -23,4 +23,12 @@ urlpatterns = patterns('',
 
     url(r'^scorecard_report/$', views.scorecard_report, name='scorecard_report'),
     url(r'^getScoreCardData/$', views.getScoreCardData, name='getScoreCardData'),
+
+
+url(r'^dca_list/$', views.dca_list, name='dca_list'),
+url(r'^add_dca_form/$', views.add_dca_form, name='add_dca_form'),
+url(r'^insert_dca_form/$', views.insert_dca_form, name='insert_dca_form'),
+url(r'^delete_dca_form/(?P<dca_id>\d+)/$', views.delete_dca_form, name='delete_dca_form'),
+url(r'^edit_dca_form/(?P<dca_id>\d+)/$', views.edit_dca_form, name='edit_dca_form'),
+url(r'^update_dca_form/$', views.update_dca_form, name='update_dca_form'),
     )

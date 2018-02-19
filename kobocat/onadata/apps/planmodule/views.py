@@ -467,3 +467,158 @@ def getScoreCardData(request):
     query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return HttpResponse(scorecard_list)
+
+
+def dca_list(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+    query = "SELECT plan_dca.id, registration_date, (select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,(select activity_name from public.plan_activities where id = activity_id ) activity_name,case when activity_level = 1 then 'District' else 'Central' end activity_level, males, females FROM public.plan_dca,plan_dca_activities where plan_dca.id = plan_dca_activities.plan_dca_id and pngo_id in " + str(org)
+    dca_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+
+    return render(request, 'planmodule/dca_list.html', {
+        'dca_list': dca_list
+    })
+
+def add_dca_form(request):
+    query = "select id,field_name from geo_data where field_type_id = 86"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    dist_id = df.id.tolist()
+    dist_name = df.field_name.tolist()
+    district = zip(dist_id, dist_name)
+    user_id = request.user.id
+    query = "select id,organization from public.usermodule_organizations where id = ( select organisation_name_id from public.usermodule_usermoduleprofile where user_id = " + str(
+        user_id) + ")"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    org_id = df.id.tolist()[0]
+    org_name = df.organization.tolist()[0]
+
+    query = "select * from public.plan_activities"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    act_id = df.id.tolist()
+    act_name = df.activity_name.tolist()
+    activity = zip(act_id, act_name)
+
+    return render(request, 'planmodule/add_dca_form.html',
+                  {'district': district, 'org_id': org_id, 'org_name': org_name,'activity':activity})
+
+
+def insert_dca_form(request):
+    if request.POST:
+        registration_date = request.POST.get('registration_date')
+        district = request.POST.get('district')
+        upazilla = request.POST.get('upazilla')
+        activity_name = request.POST.getlist('activity_name')
+        activity_level = request.POST.get('activity_level')
+        pngo_id = request.POST.get('org_id')
+        males = request.POST.get('males')
+        females = request.POST.get('females')
+        if district and upazilla:
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+", "+str(males)+", "+str(females)+") RETURNING id"
+        else:
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
+                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ", " + str(males) + ", " + str(females) + ") RETURNING id"
+        id = __db_fetch_single_value(insert_query)
+        for each in activity_name:
+            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id) VALUES("+str(id)+", "+str(each)+")"
+            __db_commit_query(q)
+    return HttpResponseRedirect("/planmodule/dca_list/")
+
+
+
+def delete_dca_form(request, dca_id):
+    delete_query = "delete from plan_dca where id = " + str(dca_id) + ""
+    __db_commit_query(delete_query)
+    return HttpResponseRedirect("/planmodule/dca_list/")
+
+
+def edit_dca_form(request, dca_id):
+    query = "SELECT plan_dca.id, registration_date, district,(SELECT field_name FROM PUBLIC.geo_data WHERE id = district) district_name, upazilla, (SELECT field_name FROM PUBLIC.geo_data WHERE id = upazilla) upazilla_name, activity_level, males, females FROM PUBLIC.plan_dca  where id=" + str(dca_id)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    data = {}
+    data['dca_id'] = dca_id
+    registration_date = df.registration_date.tolist()[0]
+    district_id = df.district.tolist()[0]
+    district_name = df.district_name.tolist()[0]
+    upazilla_id = df.upazilla.tolist()[0]
+    upazilla_name = df.upazilla_name.tolist()[0]
+    activity_level = df.activity_level.tolist()[0]
+    data['males'] = df.males.tolist()[0]
+    data['females'] = df.females.tolist()[0]
+
+    if district_id is not None:
+        query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = " + str(district_id)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        upz_id = df.id.tolist()
+        upz_name = df.field_name.tolist()
+        upazilla = zip(upz_id, upz_name)
+    else:
+        query = "select id,field_name from geo_data where field_type_id = 88 "
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        upz_id = df.id.tolist()
+        upz_name = df.field_name.tolist()
+        upazilla = zip(upz_id, upz_name)
+
+
+    query = "select id,organization from public.usermodule_organizations where id = (select pngo_id from public.plan_dca where id = " + str(dca_id) + ")"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    org_id = df.id.tolist()[0]
+    org_name = df.organization.tolist()[0]
+
+    query = "select * from public.plan_activities"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    act_id = df.id.tolist()
+    act_name = df.activity_name.tolist()
+    activity = zip(act_id, act_name)
+
+    query = "select * from plan_dca_activities where plan_dca_id ="+str(dca_id)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    set_activity_id = df.activity_id.tolist()
+
+
+
+    return render(request, 'planmodule/edit_dca_form.html',
+                  {'data': json.dumps(data, default=decimal_date_default), 'district_id': district_id,
+                   'district_name': district_name, 'upazilla_id': upazilla_id, 'upazilla_name': upazilla_name,
+                   'upazilla': upazilla, 'org_id': org_id, 'org_name': org_name,'registration_date':registration_date,'activity_level':activity_level,'activity':activity,'set_activity_id':set_activity_id})
+
+
+
+def update_dca_form(request):
+    if request.POST:
+        dca_id = request.POST.get('dca_id')
+        registration_date = request.POST.get('registration_date')
+        district = request.POST.get('district')
+        upazilla = request.POST.get('upazilla')
+        activity_name = request.POST.getlist('activity_name')
+        activity_level = request.POST.get('activity_level')
+        pngo_id = request.POST.get('org_id')
+        males = request.POST.get('males')
+        females = request.POST.get('females')
+        delete_query = "delete from plan_dca where id = "+str(dca_id)
+        __db_commit_query(delete_query)
+        if district and upazilla:
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+", "+str(males)+", "+str(females)+") RETURNING id"
+        else:
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
+                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ", " + str(males) + ", " + str(females) + ") RETURNING id"
+        id = __db_fetch_single_value(insert_query)
+        for each in activity_name:
+            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id) VALUES("+str(id)+", "+str(each)+")"
+            __db_commit_query(q)
+    return HttpResponseRedirect("/planmodule/dca_list/")

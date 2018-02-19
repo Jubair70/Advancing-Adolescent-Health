@@ -45,7 +45,7 @@ from collections import OrderedDict
 import os
 from django.core.files.storage import FileSystemStorage
 from datetime import date, timedelta, datetime
-import datetime
+
 
 def admin_check(user):
     current_user = UserModuleProfile.objects.filter(user=user)
