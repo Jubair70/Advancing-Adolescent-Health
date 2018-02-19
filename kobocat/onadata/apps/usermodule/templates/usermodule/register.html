@@ -108,12 +108,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="row">
+                    <div class="row" >
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="{{ profile_form.position.id_for_label }}">Position:</label>
-                                <input type="text" name="{{ profile_form.position.name }}" class="form-control">
-                                <span class="help-block">{{ profile_form.position.errors.as_text }}</span>
+                                <label for="{{ profile_form.position.id_for_label }}" hidden>Position:</label>
+                                <input type="hidden" name="{{ profile_form.position.name }}" class="form-control" value="default">
+                                <span class="help-block" hidden>{{ profile_form.position.errors.as_text }}</span>
                             </div>
                         </div>
                     </div>

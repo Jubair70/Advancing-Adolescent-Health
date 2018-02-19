@@ -46,16 +46,16 @@
                             </div>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-5">
-                            <div class="form-group">
-                                <label >Union: </label>
-                                <select class = "form-control" name="union" id="union" required>
-                                <option value="">Select One</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+{#                    <div class="row">#}
+{#                        <div class="col-md-5">#}
+{#                            <div class="form-group">#}
+{#                                <label >Union: </label>#}
+{#                                <select class = "form-control" name="union" id="union" required>#}
+{#                                <option value="">Select One</option>#}
+{#                                </select>#}
+{#                            </div>#}
+{#                        </div>#}
+{#                    </div>#}
 
                     <div class="row">
                         <div class="col-md-5">
@@ -87,6 +87,17 @@
                                 <label for="facilty_id">ID Number:</label>
                                 <input type="text" class="form-control" name="facility_id" id="facility_id"
                                         required>
+                            </div>
+                        </div>
+                    </div>
+
+                <div class="row">
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label for="">PNGO:</label>
+                                <textarea class="form-control" readonly>{{  org_name }}</textarea>
+                                <input type="hidden" class="form-control" name="org_id" id="org_id"
+                                     value="{{ org_id }}">
                             </div>
                         </div>
                     </div>
