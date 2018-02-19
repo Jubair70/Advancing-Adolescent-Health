@@ -135,9 +135,9 @@ def get_xform_list(username):
         xforms = XForm.objects.filter(reduce(operator.or_, [Q(id=c) for c in frm_list]))
     cursor.close()
     print "###333333xform permission#######3333"
-    print frm_qry
-    print frm_list
-    print xforms
+    #print frm_qry
+    #print frm_list
+    #print xforms
     return xforms
 
 def check_form_permissions(xform,username,permission_type):
