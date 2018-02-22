@@ -81,7 +81,7 @@ USE_I18N = True
 
 # If you set this to False, Django will not format dates, numbers and
 # calendars according to the current locale
-USE_L10N = True
+USE_L10N = False
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
@@ -193,7 +193,7 @@ MIDDLEWARE_CLASSES = (
 LOCALE_PATHS = (os.path.join(PROJECT_ROOT, 'onadata.apps.main', 'locale'), )
 
 ROOT_URLCONF = 'onadata.apps.main.urls'
-USE_TZ = True
+USE_TZ = False
 ALLOWED_HOSTS = '*'
 
 TEMPLATE_DIRS = (
@@ -250,6 +250,7 @@ INSTALLED_APPS = (
     'onadata.apps.audit_log',
     'crispy_forms',
     'onadata.apps.bgmodule',
+'onadata.apps.planmodule',
 )
 
 OAUTH2_PROVIDER = {
