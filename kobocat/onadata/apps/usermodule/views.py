@@ -46,7 +46,6 @@ import os
 from django.core.files.storage import FileSystemStorage
 from datetime import date, timedelta, datetime
 
-
 def admin_check(user):
     current_user = UserModuleProfile.objects.filter(user=user)
     if current_user:
@@ -1274,13 +1273,13 @@ def catchment_tree(request, user_id):
     df = pandas.read_sql(query, connection)
     id = df.id.tolist()
     print "Start"
-    print datetime.datetime.now()
+    print datetime.now()
     list_of_dictionary = []
     for each in id:
         create_dictionary(list_of_dictionary, each)
     datasource = json.dumps({'list_of_dictionary': list_of_dictionary})
     print "END"
-    print datetime.datetime.now()
+    print datetime.now()
     query = "select (SELECT  organization FROM public.usermodule_organizations where id = (select organisation_name_id from usermodule_usermoduleprofile where user_id = " + str(
         user_id) + ")) ,(select employee_id from usermodule_usermoduleprofile where user_id = " + str(
         user_id) + "),(select country from usermodule_usermoduleprofile where user_id = " + str(
