@@ -1944,8 +1944,10 @@ def data_connection(queryr):
             connection.close()
 
 
-def get_role():
-    query = "SELECT r.id, organization_id, role, organization FROM public.usermodule_organizationrole r, public.usermodule_organizations o where r.organization_id=o.id";
+def get_role(org_id_list):
+    org_id_list = str(map(str, org_id_list))
+    org_id_list = org_id_list.replace('[', '(').replace(']', ')')
+    query = "SELECT r.id, organization_id, role, organization FROM public.usermodule_organizationrole r, public.usermodule_organizations o where r.organization_id=o.id and o.id in "+str(org_id_list);
     fetchVal = data_connection(query)
     role_data = []
     for eachval in fetchVal:
@@ -1957,10 +1959,8 @@ def get_role():
 def get_role_permission(id_string):
     query = "select id, xform_id, role_id, can_view, can_submit, can_edit, can_delete, can_setting from public.rolewiseform where xform_id = %d" % (
     id_string)
-    
     permission_data = []
     fetchVal = data_connection(query)
-    
     for eachval in fetchVal:
         temp = list(eachval)
         permission_data.append(temp)
@@ -2027,6 +2027,16 @@ def edit_table(query):
 def startpage(request, username, id_string):
     query = "select id from logger_xform where id_string = '%s'" % (id_string)
     form_id = int(single_query(query))
+
+    ####
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+
     if request.method == 'POST':
         # id_string = request.POST.get('id_string');
         # query = "select id from logger_xform where id_string = '%s'" % (id_string)
@@ -2035,7 +2045,7 @@ def startpage(request, username, id_string):
         edit_list = request.POST.getlist('edit_id[]');
         submit_list = request.POST.getlist('submit_id[]');
         delete_list = request.POST.getlist('delete_id[]');
-        role_list = get_role()
+        role_list = get_role(org_id_list)
         permission_role = get_role_permission(form_id)
         changed_role = checking_change_permission(view_list, edit_list, submit_list, delete_list, role_list,
                                                   permission_role)
@@ -2071,7 +2081,7 @@ def startpage(request, username, id_string):
 
 
     context = {
-            'role_list': get_role(),
+            'role_list': get_role(org_id_list),
             'permission_data': get_role_permission(form_id),
             'id_string': id_string
         }

@@ -265,7 +265,7 @@ def scorecard_list(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(
         org)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
 
@@ -317,17 +317,16 @@ def insert_scorecard_form(request):
         pngo_id = request.POST.get('org_id')
         created_by = request.user.id
         updated_by = request.user.id
-        from_date = request.POST.get('from_date')
-        to_date = request.POST.get('to_date')
+        # from_date = request.POST.get('from_date')
+        # to_date = request.POST.get('to_date')
         average_score_adolescents = request.POST.get('average_score_adolescents')
         average_score_service_providers = request.POST.get('average_score_service_providers')
         major_comments_adolescents = request.POST.get('major_comments_adolescents')
         major_comments_service_providers = request.POST.get('major_comments_service_providers')
         print
         pngo_id
-        insert_query = "INSERT INTO public.plan_scorecard ( district, upazilla, pngo_id, execution_date, from_date, to_date, facility_id, facility_type, average_score_adolescents, average_score_service_providers, major_comments_adolescents, major_comments_service_providers, created_by, updated_by, created_at, updated_at) VALUES(" + str(
-            district) + ", " + str(upazilla) + ", " + str(pngo_id) + ", '" + str(execution_date) + "', '" + str(
-            from_date) + "', '" + str(to_date) + "', " + str(facility_id) + ", " + str(facility_type) + ", " + str(
+        insert_query = "INSERT INTO public.plan_scorecard ( district, upazilla, pngo_id, execution_date, facility_id, facility_type, average_score_adolescents, average_score_service_providers, major_comments_adolescents, major_comments_service_providers, created_by, updated_by, created_at, updated_at) VALUES(" + str(
+            district) + ", " + str(upazilla) + ", " + str(pngo_id) + ", '" + str(execution_date) + "', " + str(facility_id) + ", " + str(facility_type) + ", " + str(
             average_score_adolescents) + ", " + str(average_score_service_providers) + ", '" + str(
             major_comments_adolescents) + "', '" + str(major_comments_service_providers) + "', " + str(
             created_by) + ", " + str(updated_by) + ",now(),now())"
@@ -337,15 +336,13 @@ def insert_scorecard_form(request):
 
 
 def edit_scorecard_form(request, scorecard_id):
-    query = "select id,district,(select field_name from public.geo_data where id = district) district_name,upazilla,(select field_name from public.geo_data where id = upazilla) upazilla_name,DATE(execution_date) execution_date,from_date,to_date,facility_id,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name, facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where id=" + str(
+    query = "select id,district,(select field_name from public.geo_data where id = district) district_name,upazilla,(select field_name from public.geo_data where id = upazilla) upazilla_name,DATE(execution_date) execution_date,facility_id,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name, facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where id=" + str(
         scorecard_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     data = {}
     data['scorecard_id'] = scorecard_id
     execution_date = df.execution_date.tolist()[0]
-    from_date = df.from_date.tolist()[0]
-    to_date = df.to_date.tolist()[0]
     data['facility_type'] = df.facility_type.tolist()[0]
     data['average_score_adolescents'] = df.average_score_adolescents.tolist()[0]
     data['average_score_service_providers'] = df.average_score_service_providers.tolist()[0]
@@ -384,7 +381,7 @@ def edit_scorecard_form(request, scorecard_id):
                    'district_name': district_name, 'upazila_id': upazila_id, 'upazilla_name': upazilla_name,
                    'upazila': upazila, 'org_id': org_id, 'org_name': org_name, 'set_facility_id': set_facility_id,
                    'set_facility_name': set_facility_name, 'facility': facility, 'execution_date': execution_date
-                      , 'from_date': from_date, 'to_date': to_date})
+                      })
 
 
 def update_scorecard_form(request):
@@ -397,8 +394,8 @@ def update_scorecard_form(request):
         facility_type = request.POST.get('facility_type')
         pngo_id = request.POST.get('org_id')
         updated_by = request.user.id
-        from_date = request.POST.get('from_date')
-        to_date = request.POST.get('to_date')
+        # from_date = request.POST.get('from_date')
+        # to_date = request.POST.get('to_date')
         average_score_adolescents = request.POST.get('average_score_adolescents')
         average_score_service_providers = request.POST.get('average_score_service_providers')
         major_comments_adolescents = request.POST.get('major_comments_adolescents')
@@ -411,8 +408,7 @@ def update_scorecard_form(request):
             average_score_service_providers) + ", major_comments_adolescents='" + str(
             major_comments_adolescents) + "', major_comments_service_providers='" + str(
             major_comments_service_providers) + "',  updated_by=" + str(
-            updated_by) + ", updated_at=now(), from_date='" + str(from_date) + "', to_date='" + str(
-            to_date) + "' WHERE id=" + str(scorecard_id)
+            updated_by) + ", updated_at=now() WHERE id=" + str(scorecard_id)
         __db_commit_query(update_query)
     return HttpResponseRedirect("/planmodule/scorecard_list/")
 
@@ -433,7 +429,7 @@ def scorecard_report(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(org)
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(org)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     query_pngo = "select id,organization from public.usermodule_organizations where id in "+str(org)
     df = pandas.DataFrame()
@@ -464,7 +460,7 @@ def getScoreCardData(request):
         filter_query += " and upazilla = "+str(upazila)
     if pngo !="":
         filter_query += " and pngo_id = "+str(pngo)
-    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return HttpResponse(scorecard_list)
 
@@ -520,16 +516,18 @@ def insert_dca_form(request):
         activity_name = request.POST.getlist('activity_name')
         activity_level = request.POST.get('activity_level')
         pngo_id = request.POST.get('org_id')
-        males = request.POST.get('males')
-        females = request.POST.get('females')
+        males = request.POST.getlist('males')
+        females = request.POST.getlist('females')
         if district and upazilla:
-            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+", "+str(males)+", "+str(females)+") RETURNING id"
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+") RETURNING id"
         else:
-            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
-                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ", " + str(males) + ", " + str(females) + ") RETURNING id"
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
+                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ") RETURNING id"
         id = __db_fetch_single_value(insert_query)
+        i = 0
         for each in activity_name:
-            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id) VALUES("+str(id)+", "+str(each)+")"
+            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id, males, females) VALUES("+str(id)+", "+str(each)+", "+str(males[i])+", "+str(females[i])+"  )"
+            i = i+ 1
             __db_commit_query(q)
     return HttpResponseRedirect("/planmodule/dca_list/")
 
@@ -542,7 +540,7 @@ def delete_dca_form(request, dca_id):
 
 
 def edit_dca_form(request, dca_id):
-    query = "SELECT plan_dca.id, registration_date, district,(SELECT field_name FROM PUBLIC.geo_data WHERE id = district) district_name, upazilla, (SELECT field_name FROM PUBLIC.geo_data WHERE id = upazilla) upazilla_name, activity_level, males, females FROM PUBLIC.plan_dca  where id=" + str(dca_id)
+    query = "SELECT plan_dca.id, registration_date, district,(SELECT field_name FROM PUBLIC.geo_data WHERE id = district) district_name, upazilla, (SELECT field_name FROM PUBLIC.geo_data WHERE id = upazilla) upazilla_name, activity_level FROM PUBLIC.plan_dca  where id=" + str(dca_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     data = {}
@@ -553,8 +551,8 @@ def edit_dca_form(request, dca_id):
     upazilla_id = df.upazilla.tolist()[0]
     upazilla_name = df.upazilla_name.tolist()[0]
     activity_level = df.activity_level.tolist()[0]
-    data['males'] = df.males.tolist()[0]
-    data['females'] = df.females.tolist()[0]
+    # data['males'] = df.males.tolist()[0]
+    # data['females'] = df.females.tolist()[0]
 
     if district_id is not None:
         query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = " + str(district_id)
@@ -589,13 +587,15 @@ def edit_dca_form(request, dca_id):
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     set_activity_id = df.activity_id.tolist()
+    set_males_number = df.males.tolist()
+    set_females_number = df.females.tolist()
 
-
+    sss = zip(set_activity_id,set_males_number,set_females_number)
 
     return render(request, 'planmodule/edit_dca_form.html',
                   {'data': json.dumps(data, default=decimal_date_default), 'district_id': district_id,
                    'district_name': district_name, 'upazilla_id': upazilla_id, 'upazilla_name': upazilla_name,
-                   'upazilla': upazilla, 'org_id': org_id, 'org_name': org_name,'registration_date':registration_date,'activity_level':activity_level,'activity':activity,'set_activity_id':set_activity_id})
+                   'upazilla': upazilla, 'org_id': org_id, 'org_name': org_name,'registration_date':registration_date,'activity_level':activity_level,'activity':activity,"sss":sss})
 
 
 
@@ -608,17 +608,19 @@ def update_dca_form(request):
         activity_name = request.POST.getlist('activity_name')
         activity_level = request.POST.get('activity_level')
         pngo_id = request.POST.get('org_id')
-        males = request.POST.get('males')
-        females = request.POST.get('females')
+        males = request.POST.getlist('males')
+        females = request.POST.getlist('females')
         delete_query = "delete from plan_dca where id = "+str(dca_id)
         __db_commit_query(delete_query)
         if district and upazilla:
-            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+", "+str(males)+", "+str(females)+") RETURNING id"
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+") RETURNING id"
         else:
-            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
-                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ", " + str(males) + ", " + str(females) + ") RETURNING id"
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
+                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ") RETURNING id"
         id = __db_fetch_single_value(insert_query)
+        i = 0
         for each in activity_name:
-            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id) VALUES("+str(id)+", "+str(each)+")"
+            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id, males, females) VALUES("+str(id)+", "+str(each)+", "+str(males[i])+", "+str(females[i])+")"
+            i = i+ 1
             __db_commit_query(q)
     return HttpResponseRedirect("/planmodule/dca_list/")
