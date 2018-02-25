@@ -516,16 +516,18 @@ def insert_dca_form(request):
         activity_name = request.POST.getlist('activity_name')
         activity_level = request.POST.get('activity_level')
         pngo_id = request.POST.get('org_id')
-        males = request.POST.get('males')
-        females = request.POST.get('females')
+        males = request.POST.getlist('males')
+        females = request.POST.getlist('females')
         if district and upazilla:
-            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+", "+str(males)+", "+str(females)+") RETURNING id"
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+") RETURNING id"
         else:
-            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
-                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ", " + str(males) + ", " + str(females) + ") RETURNING id"
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
+                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ") RETURNING id"
         id = __db_fetch_single_value(insert_query)
+        i = 0
         for each in activity_name:
-            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id) VALUES("+str(id)+", "+str(each)+")"
+            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id, males, females) VALUES("+str(id)+", "+str(each)+", "+str(males[i])+", "+str(females[i])+"  )"
+            i = i+ 1
             __db_commit_query(q)
     return HttpResponseRedirect("/planmodule/dca_list/")
 
@@ -538,7 +540,7 @@ def delete_dca_form(request, dca_id):
 
 
 def edit_dca_form(request, dca_id):
-    query = "SELECT plan_dca.id, registration_date, district,(SELECT field_name FROM PUBLIC.geo_data WHERE id = district) district_name, upazilla, (SELECT field_name FROM PUBLIC.geo_data WHERE id = upazilla) upazilla_name, activity_level, males, females FROM PUBLIC.plan_dca  where id=" + str(dca_id)
+    query = "SELECT plan_dca.id, registration_date, district,(SELECT field_name FROM PUBLIC.geo_data WHERE id = district) district_name, upazilla, (SELECT field_name FROM PUBLIC.geo_data WHERE id = upazilla) upazilla_name, activity_level FROM PUBLIC.plan_dca  where id=" + str(dca_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     data = {}
@@ -549,8 +551,8 @@ def edit_dca_form(request, dca_id):
     upazilla_id = df.upazilla.tolist()[0]
     upazilla_name = df.upazilla_name.tolist()[0]
     activity_level = df.activity_level.tolist()[0]
-    data['males'] = df.males.tolist()[0]
-    data['females'] = df.females.tolist()[0]
+    # data['males'] = df.males.tolist()[0]
+    # data['females'] = df.females.tolist()[0]
 
     if district_id is not None:
         query = "select id,field_name from geo_data where field_type_id = 88 and field_parent_id = " + str(district_id)
@@ -585,13 +587,15 @@ def edit_dca_form(request, dca_id):
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     set_activity_id = df.activity_id.tolist()
+    set_males_number = df.males.tolist()
+    set_females_number = df.females.tolist()
 
-
+    sss = zip(set_activity_id,set_males_number,set_females_number)
 
     return render(request, 'planmodule/edit_dca_form.html',
                   {'data': json.dumps(data, default=decimal_date_default), 'district_id': district_id,
                    'district_name': district_name, 'upazilla_id': upazilla_id, 'upazilla_name': upazilla_name,
-                   'upazilla': upazilla, 'org_id': org_id, 'org_name': org_name,'registration_date':registration_date,'activity_level':activity_level,'activity':activity,'set_activity_id':set_activity_id})
+                   'upazilla': upazilla, 'org_id': org_id, 'org_name': org_name,'registration_date':registration_date,'activity_level':activity_level,'activity':activity,"sss":sss})
 
 
 
@@ -604,17 +608,19 @@ def update_dca_form(request):
         activity_name = request.POST.getlist('activity_name')
         activity_level = request.POST.get('activity_level')
         pngo_id = request.POST.get('org_id')
-        males = request.POST.get('males')
-        females = request.POST.get('females')
+        males = request.POST.getlist('males')
+        females = request.POST.getlist('females')
         delete_query = "delete from plan_dca where id = "+str(dca_id)
         __db_commit_query(delete_query)
         if district and upazilla:
-            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+", "+str(males)+", "+str(females)+") RETURNING id"
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date, district, upazilla, pngo_id, activity_level) VALUES(nextval('plan_dca_id_seq'::regclass),'"+str(registration_date)+"', "+str(district)+", "+str(upazilla)+", "+str(pngo_id)+", "+str(activity_level)+") RETURNING id"
         else:
-            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level, males, females) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
-                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ", " + str(males) + ", " + str(females) + ") RETURNING id"
+            insert_query = "INSERT INTO public.plan_dca (id,registration_date,  pngo_id, activity_level) VALUES(nextval('plan_dca_id_seq'::regclass),'" + str(
+                registration_date) + "',  " + str(pngo_id) + ", " + str(activity_level) + ") RETURNING id"
         id = __db_fetch_single_value(insert_query)
+        i = 0
         for each in activity_name:
-            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id) VALUES("+str(id)+", "+str(each)+")"
+            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id, males, females) VALUES("+str(id)+", "+str(each)+", "+str(males[i])+", "+str(females[i])+")"
+            i = i+ 1
             __db_commit_query(q)
     return HttpResponseRedirect("/planmodule/dca_list/")
