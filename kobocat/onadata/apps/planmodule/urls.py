@@ -34,6 +34,7 @@ urlpatterns = patterns('',
                        url(r'^delete_dca_form/(?P<dca_id>\d+)/$', views.delete_dca_form, name='delete_dca_form'),
                        url(r'^edit_dca_form/(?P<dca_id>\d+)/$', views.edit_dca_form, name='edit_dca_form'),
                        url(r'^update_dca_form/$', views.update_dca_form, name='update_dca_form'),
-                       url(r'register_household_adolescent', views_api.register_household_adolescent),
-                       url(r'get_adolescent_list', views_api.get_adolescent_list),
+                       url(r'^register_household_adolescent/$', views_api.register_household_adolescent),
+                       url(r'^get_adolescent_list/$', views_api.get_adolescent_list),
+                       url(r'^get_cmp_list/$',views_api.get_cmp_list)
                        )
