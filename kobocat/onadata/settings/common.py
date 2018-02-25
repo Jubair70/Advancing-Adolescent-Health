@@ -246,6 +246,7 @@ INSTALLED_APPS = (
     'onadata.apps.usermodule',
     'onadata.apps.dashboard',
     'onadata.apps.dashboard_tool',
+    'onadata.apps.planmodule',
     #'highcharts',
     'onadata.apps.audit_log',
     'crispy_forms',
