@@ -265,7 +265,7 @@ def scorecard_list(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(
         org)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
 
@@ -317,17 +317,16 @@ def insert_scorecard_form(request):
         pngo_id = request.POST.get('org_id')
         created_by = request.user.id
         updated_by = request.user.id
-        from_date = request.POST.get('from_date')
-        to_date = request.POST.get('to_date')
+        # from_date = request.POST.get('from_date')
+        # to_date = request.POST.get('to_date')
         average_score_adolescents = request.POST.get('average_score_adolescents')
         average_score_service_providers = request.POST.get('average_score_service_providers')
         major_comments_adolescents = request.POST.get('major_comments_adolescents')
         major_comments_service_providers = request.POST.get('major_comments_service_providers')
         print
         pngo_id
-        insert_query = "INSERT INTO public.plan_scorecard ( district, upazilla, pngo_id, execution_date, from_date, to_date, facility_id, facility_type, average_score_adolescents, average_score_service_providers, major_comments_adolescents, major_comments_service_providers, created_by, updated_by, created_at, updated_at) VALUES(" + str(
-            district) + ", " + str(upazilla) + ", " + str(pngo_id) + ", '" + str(execution_date) + "', '" + str(
-            from_date) + "', '" + str(to_date) + "', " + str(facility_id) + ", " + str(facility_type) + ", " + str(
+        insert_query = "INSERT INTO public.plan_scorecard ( district, upazilla, pngo_id, execution_date, facility_id, facility_type, average_score_adolescents, average_score_service_providers, major_comments_adolescents, major_comments_service_providers, created_by, updated_by, created_at, updated_at) VALUES(" + str(
+            district) + ", " + str(upazilla) + ", " + str(pngo_id) + ", '" + str(execution_date) + "', " + str(facility_id) + ", " + str(facility_type) + ", " + str(
             average_score_adolescents) + ", " + str(average_score_service_providers) + ", '" + str(
             major_comments_adolescents) + "', '" + str(major_comments_service_providers) + "', " + str(
             created_by) + ", " + str(updated_by) + ",now(),now())"
@@ -337,15 +336,13 @@ def insert_scorecard_form(request):
 
 
 def edit_scorecard_form(request, scorecard_id):
-    query = "select id,district,(select field_name from public.geo_data where id = district) district_name,upazilla,(select field_name from public.geo_data where id = upazilla) upazilla_name,DATE(execution_date) execution_date,from_date,to_date,facility_id,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name, facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where id=" + str(
+    query = "select id,district,(select field_name from public.geo_data where id = district) district_name,upazilla,(select field_name from public.geo_data where id = upazilla) upazilla_name,DATE(execution_date) execution_date,facility_id,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name, facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where id=" + str(
         scorecard_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     data = {}
     data['scorecard_id'] = scorecard_id
     execution_date = df.execution_date.tolist()[0]
-    from_date = df.from_date.tolist()[0]
-    to_date = df.to_date.tolist()[0]
     data['facility_type'] = df.facility_type.tolist()[0]
     data['average_score_adolescents'] = df.average_score_adolescents.tolist()[0]
     data['average_score_service_providers'] = df.average_score_service_providers.tolist()[0]
@@ -384,7 +381,7 @@ def edit_scorecard_form(request, scorecard_id):
                    'district_name': district_name, 'upazila_id': upazila_id, 'upazilla_name': upazilla_name,
                    'upazila': upazila, 'org_id': org_id, 'org_name': org_name, 'set_facility_id': set_facility_id,
                    'set_facility_name': set_facility_name, 'facility': facility, 'execution_date': execution_date
-                      , 'from_date': from_date, 'to_date': to_date})
+                      })
 
 
 def update_scorecard_form(request):
@@ -397,8 +394,8 @@ def update_scorecard_form(request):
         facility_type = request.POST.get('facility_type')
         pngo_id = request.POST.get('org_id')
         updated_by = request.user.id
-        from_date = request.POST.get('from_date')
-        to_date = request.POST.get('to_date')
+        # from_date = request.POST.get('from_date')
+        # to_date = request.POST.get('to_date')
         average_score_adolescents = request.POST.get('average_score_adolescents')
         average_score_service_providers = request.POST.get('average_score_service_providers')
         major_comments_adolescents = request.POST.get('major_comments_adolescents')
@@ -411,8 +408,7 @@ def update_scorecard_form(request):
             average_score_service_providers) + ", major_comments_adolescents='" + str(
             major_comments_adolescents) + "', major_comments_service_providers='" + str(
             major_comments_service_providers) + "',  updated_by=" + str(
-            updated_by) + ", updated_at=now(), from_date='" + str(from_date) + "', to_date='" + str(
-            to_date) + "' WHERE id=" + str(scorecard_id)
+            updated_by) + ", updated_at=now() WHERE id=" + str(scorecard_id)
         __db_commit_query(update_query)
     return HttpResponseRedirect("/planmodule/scorecard_list/")
 
@@ -433,7 +429,7 @@ def scorecard_report(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(org)
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(org)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     query_pngo = "select id,organization from public.usermodule_organizations where id in "+str(org)
     df = pandas.DataFrame()
@@ -464,7 +460,7 @@ def getScoreCardData(request):
         filter_query += " and upazilla = "+str(upazila)
     if pngo !="":
         filter_query += " and pngo_id = "+str(pngo)
-    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,from_date,to_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
+    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return HttpResponse(scorecard_list)
 
