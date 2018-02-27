@@ -494,7 +494,7 @@ def dca_list(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "SELECT plan_dca.id, registration_date, (select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,(select activity_name from public.plan_activities where id = activity_id ) activity_name,case when activity_level = 1 then 'District' else 'Central' end activity_level, males, females FROM public.plan_dca,plan_dca_activities where plan_dca.id = plan_dca_activities.plan_dca_id and pngo_id in " + str(org)
+    query = "SELECT plan_dca.id, registration_date, COALESCE((select field_name from public.geo_data where id = district),'') district,COALESCE((select field_name from public.geo_data where id = upazilla),'') upazilla,(select activity_name from public.plan_activities where id = activity_id ) activity_name,case when activity_level = 1 then 'District' else 'Central' end activity_level, males, females FROM public.plan_dca,plan_dca_activities where plan_dca.id = plan_dca_activities.plan_dca_id and pngo_id in " + str(org)
     dca_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
 
     return render(request, 'planmodule/dca_list.html', {
@@ -659,7 +659,23 @@ def mis_report_district_list(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where pngo_id in " + str(org)
+
+    user_id = request.user.id
+    query = "select geoid from public.usermodule_catchment_area where user_id =" + str(user_id)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    if not df.empty:
+        geoid = df.geoid.tolist()[0]
+        query = "select field_type_id from geo_data where id =" + str(geoid)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        field_type_id = df.field_type_id.tolist()[0]
+        if field_type_id == 88:
+            query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where activity_type = 3 and upazilla = "+str(geoid)+" and pngo_id in " + str(org)
+        else:
+            query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where district is not null and pngo_id in " + str(org)
+    else:
+        query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where pngo_id in " + str(org)
     mis_report_district_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return render(request, 'planmodule/mis_report_district_list.html', {
         'mis_report_district_list': mis_report_district_list
