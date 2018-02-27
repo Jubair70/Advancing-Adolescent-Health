@@ -4,7 +4,7 @@ from onadata.apps.planmodule import views, views_api
 
 urlpatterns = patterns('',
                        url(r'^$', views.index, name='index'),
-                       url(r'^facility_list/$', views.facility_list, name='facility_list'),
+                           url(r'^facility_list/$', views.facility_list, name='facility_list'),
                        url(r'^add_facility_form/$', views.add_facility_form, name='add_facility_form'),
                        url(r'^insert_facility_form/$', views.insert_facility_form, name='insert_facility_form'),
                        url(r'^edit_facility_form/(?P<form_id>\d+)/$', views.edit_facility_form,
@@ -36,4 +36,11 @@ urlpatterns = patterns('',
                        url(r'^update_dca_form/$', views.update_dca_form, name='update_dca_form'),
                        url(r'register_household_adolescent', views_api.register_household_adolescent),
                        url(r'get_adolescent_list', views_api.get_adolescent_list),
+
+
+                        url(r'^mis_report_district_list/$', views.mis_report_district_list, name='mis_report_district_list'),
+                        url(r'^add_mis_report_district_form/$', views.add_mis_report_district_form, name='add_mis_report_district_form'),
+url(r'^insert_mis_report_district_form/$', views.insert_mis_report_district_form, name='insert_mis_report_district_form'),
+                       url(r'^edit_mis_report_district_form/(?P<mis_report_id>\d+)/$', views.edit_mis_report_district_form, name='edit_mis_report_district_form'),
+url(r'^update_mis_report_district_form/$', views.update_mis_report_district_form, name='update_mis_report_district_form'),
                        )
