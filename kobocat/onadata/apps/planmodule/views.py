@@ -100,6 +100,7 @@ def decimal_date_default(obj):
     raise TypeError
 
 
+@login_required
 def index(request):
     return render(request, 'planmodule/index.html')
 
@@ -113,6 +114,7 @@ def get_recursive_organization_children(organization, organization_list=[]):
     return list(set(organization_list))
 
 
+@login_required
 def facility_list(request):
     current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
     if current_user:
@@ -132,6 +134,7 @@ def facility_list(request):
     })
 
 
+@login_required
 def add_facility_form(request):
     query = "select id,field_name from geo_data where field_type_id = 86"
     df = pandas.DataFrame()
@@ -150,6 +153,7 @@ def add_facility_form(request):
                   {'district': district, 'org_id': org_id, 'org_name': org_name})
 
 
+@login_required
 def insert_facility_form(request):
     if request.POST:
         registration_date = request.POST.get('registration_date')
@@ -169,6 +173,7 @@ def insert_facility_form(request):
     return HttpResponseRedirect("/planmodule/facility_list/")
 
 
+@login_required
 def edit_facility_form(request, form_id):
     query = "select DATE(registration_date) registration_date,(select field_name from geo_data where id = district) district_name,(select field_name from geo_data where id = upazilla) upazilla_name,  district, upazilla,  facilty_name, facilty_id,facility_type from plan_facilities where id=" + str(
         form_id) + ""
@@ -214,6 +219,7 @@ def edit_facility_form(request, form_id):
                    'upazila': upazila, 'org_id': org_id, 'org_name': org_name})
 
 
+@login_required
 def update_facility_form(request):
     if request.POST:
         form_id = request.POST.get('form_id')
@@ -235,6 +241,7 @@ def update_facility_form(request):
     return HttpResponseRedirect("/planmodule/facility_list/")
 
 
+@login_required
 def delete_facility_form(request, facility_id):
     delete_query = "delete from plan_facilities where id = " + str(facility_id) + ""
     __db_commit_query(delete_query)
@@ -255,6 +262,7 @@ def getUnions(request):
     return HttpResponse(union_data)
 
 
+@login_required
 def scorecard_list(request):
     current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
     if current_user:
@@ -274,6 +282,7 @@ def scorecard_list(request):
     })
 
 
+@login_required
 def add_scorecard_form(request):
     query = "select id,field_name from geo_data where field_type_id = 86"
     df = pandas.DataFrame()
@@ -306,6 +315,7 @@ def getType(request):
     return HttpResponse(facility_type)
 
 
+@login_required
 def insert_scorecard_form(request):
     if request.POST:
         execution_date = request.POST.get('execution_date')
@@ -335,6 +345,7 @@ def insert_scorecard_form(request):
     return HttpResponseRedirect("/planmodule/scorecard_list/")
 
 
+@login_required
 def edit_scorecard_form(request, scorecard_id):
     query = "select id,district,(select field_name from public.geo_data where id = district) district_name,upazilla,(select field_name from public.geo_data where id = upazilla) upazilla_name,DATE(execution_date) execution_date,facility_id,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name, facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where id=" + str(
         scorecard_id)
@@ -384,6 +395,8 @@ def edit_scorecard_form(request, scorecard_id):
                       })
 
 
+
+@login_required
 def update_scorecard_form(request):
     if request.POST:
         scorecard_id = request.POST.get('scorecard_id')
@@ -413,12 +426,16 @@ def update_scorecard_form(request):
     return HttpResponseRedirect("/planmodule/scorecard_list/")
 
 
+
+@login_required
 def delete_scorecard_form(request, scorecard_id):
     delete_query = "delete from plan_scorecard where id = " + str(scorecard_id) + ""
     __db_commit_query(delete_query)
     return HttpResponseRedirect("/planmodule/scorecard_list/")
 
 
+
+@login_required
 def scorecard_report(request):
     current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
     if current_user:
@@ -450,6 +467,7 @@ def scorecard_report(request):
     })
 
 
+@login_required
 def getScoreCardData(request):
     from_date = request.POST.get('from_date')
     to_date = request.POST.get('to_date')
@@ -465,6 +483,7 @@ def getScoreCardData(request):
     return HttpResponse(scorecard_list)
 
 
+@login_required
 def dca_list(request):
     current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
     if current_user:
@@ -475,13 +494,14 @@ def dca_list(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "SELECT plan_dca.id, registration_date, (select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,(select activity_name from public.plan_activities where id = activity_id ) activity_name,case when activity_level = 1 then 'District' else 'Central' end activity_level, males, females FROM public.plan_dca,plan_dca_activities where plan_dca.id = plan_dca_activities.plan_dca_id and pngo_id in " + str(org)
+    query = "SELECT plan_dca.id, registration_date, COALESCE((select field_name from public.geo_data where id = district),'') district,COALESCE((select field_name from public.geo_data where id = upazilla),'') upazilla,(select activity_name from public.plan_activities where id = activity_id ) activity_name,case when activity_level = 1 then 'District' else 'Central' end activity_level, males, females FROM public.plan_dca,plan_dca_activities where plan_dca.id = plan_dca_activities.plan_dca_id and pngo_id in " + str(org)
     dca_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
 
     return render(request, 'planmodule/dca_list.html', {
         'dca_list': dca_list
     })
 
+@login_required
 def add_dca_form(request):
     query = "select id,field_name from geo_data where field_type_id = 86"
     df = pandas.DataFrame()
@@ -496,18 +516,17 @@ def add_dca_form(request):
     df = pandas.read_sql(query, connection)
     org_id = df.id.tolist()[0]
     org_name = df.organization.tolist()[0]
-
     query = "select * from public.plan_activities"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     act_id = df.id.tolist()
     act_name = df.activity_name.tolist()
     activity = zip(act_id, act_name)
-
     return render(request, 'planmodule/add_dca_form.html',
                   {'district': district, 'org_id': org_id, 'org_name': org_name,'activity':activity})
 
 
+@login_required
 def insert_dca_form(request):
     if request.POST:
         registration_date = request.POST.get('registration_date')
@@ -532,13 +551,14 @@ def insert_dca_form(request):
     return HttpResponseRedirect("/planmodule/dca_list/")
 
 
-
+@login_required
 def delete_dca_form(request, dca_id):
     delete_query = "delete from plan_dca where id = " + str(dca_id) + ""
     __db_commit_query(delete_query)
     return HttpResponseRedirect("/planmodule/dca_list/")
 
 
+@login_required
 def edit_dca_form(request, dca_id):
     query = "SELECT plan_dca.id, registration_date, district,(SELECT field_name FROM PUBLIC.geo_data WHERE id = district) district_name, upazilla, (SELECT field_name FROM PUBLIC.geo_data WHERE id = upazilla) upazilla_name, activity_level FROM PUBLIC.plan_dca  where id=" + str(dca_id)
     df = pandas.DataFrame()
@@ -599,6 +619,7 @@ def edit_dca_form(request, dca_id):
 
 
 
+@login_required
 def update_dca_form(request):
     if request.POST:
         dca_id = request.POST.get('dca_id')
@@ -624,3 +645,152 @@ def update_dca_form(request):
             i = i+ 1
             __db_commit_query(q)
     return HttpResponseRedirect("/planmodule/dca_list/")
+
+
+
+
+@login_required
+def mis_report_district_list(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+
+    user_id = request.user.id
+    query = "select geoid from public.usermodule_catchment_area where user_id =" + str(user_id)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    if not df.empty:
+        geoid = df.geoid.tolist()[0]
+        query = "select field_type_id from geo_data where id =" + str(geoid)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        field_type_id = df.field_type_id.tolist()[0]
+        if field_type_id == 88:
+            query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where activity_type = 3 and upazilla = "+str(geoid)+" and pngo_id in " + str(org)
+        else:
+            query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where district is not null and pngo_id in " + str(org)
+    else:
+        query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where pngo_id in " + str(org)
+    mis_report_district_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    return render(request, 'planmodule/mis_report_district_list.html', {
+        'mis_report_district_list': mis_report_district_list
+    })
+
+
+@login_required
+def add_mis_report_district_form(request):
+    query = "select * from public.plan_activities"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    act_id = df.id.tolist()
+    act_name = df.activity_name.tolist()
+    activity = zip(act_id, act_name)
+    return render(request, 'planmodule/add_mis_report_district_form.html',{'activity':activity})
+
+
+@login_required
+def insert_mis_report_district_form(request):
+    if request.POST:
+        activity_date = request.POST.get('activity_date')
+        activity_id = request.POST.get('activity_name')
+        number_of_activity = request.POST.get('number_of_activity')
+        male_boys_unmarried = request.POST.get('male_boys_unmarried')
+        male_boys_married = request.POST.get('male_boys_married')
+        female_girls_unmarried = request.POST.get('female_girls_unmarried')
+        female_girls_married = request.POST.get('female_girls_married')
+        comments = request.POST.get('comments')
+
+        current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+        if current_user:
+            current_user = current_user[0]
+
+        user_id = request.user.id
+        pngo_id = current_user.organisation_name_id
+        query = "select geoid from public.usermodule_catchment_area where user_id ="+str(user_id)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query,connection)
+        if df.empty:
+            activity_type = 1
+        else:
+            geoid = df.geoid.tolist()[0]
+            query = "select field_type_id from geo_data where id ="+str(geoid)
+            df = pandas.DataFrame()
+            df = pandas.read_sql(query, connection)
+            field_type_id = df.field_type_id.tolist()[0]
+            if field_type_id == 86:
+                activity_type = 2
+                district = geoid
+            elif field_type_id == 88:
+                activity_type = 3
+                query = "select id from geo_data where field_parent_id =" + str(geoid)
+                df = pandas.DataFrame()
+                df = pandas.read_sql(query, connection)
+                district = df.id.tolist()[0]
+                upazilla = geoid
+
+        if activity_type == 1:
+            insert_query = "INSERT INTO public.plan_mis_report_district_form(activity_date, activity_type, activity_id, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id) VALUES('"+str(activity_date)+"', "+str(activity_type)+", "+str(activity_id)+", "+str(number_of_activity)+", "+str(male_boys_unmarried)+", "+str(male_boys_married)+", "+str(female_girls_unmarried)+", "+str(female_girls_married)+",'"+str(comments)+"', "+str(pngo_id)+")"
+        elif activity_type == 2:
+            insert_query = "INSERT INTO public.plan_mis_report_district_form(activity_date, activity_type, activity_id, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, district) VALUES('" + str(
+                activity_date) + "', " + str(activity_type) + ", " + str(activity_id) + ", " + str(
+                number_of_activity) + ", " + str(male_boys_unmarried) + ", " + str(male_boys_married) + ", " + str(
+                female_girls_unmarried) + ", " + str(female_girls_married) + ",'" + str(comments) + "', " + str(
+                pngo_id) + "," + str(district) + ")"
+        elif activity_type == 3:
+            insert_query = "INSERT INTO public.plan_mis_report_district_form(activity_date, activity_type, activity_id, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, district, upazilla) VALUES('" + str(
+                activity_date) + "', " + str(activity_type) + ", " + str(activity_id) + ", " + str(
+                number_of_activity) + ", " + str(male_boys_unmarried) + ", " + str(male_boys_married) + ", " + str(
+                female_girls_unmarried) + ", " + str(female_girls_married) + ",'" + str(comments) + "', " + str(
+                pngo_id) + "," + str(district) + ", " + str(upazilla) + ")"
+        __db_commit_query(insert_query)
+    return HttpResponseRedirect("/planmodule/mis_report_district_list/")
+
+
+
+@login_required
+def edit_mis_report_district_form(request, mis_report_id):
+    query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form  where id=" + str(mis_report_id)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    data = {}
+    data['mis_report_id'] = mis_report_id
+    data['number_of_activity'] = df.number_of_activity.tolist()[0]
+    data['male_boys_unmarried'] = df.male_boys_unmarried.tolist()[0]
+    data['male_boys_married'] = df.male_boys_married.tolist()[0]
+    data['female_girls_unmarried'] = df.female_girls_unmarried.tolist()[0]
+    data['female_girls_married'] = df.female_girls_married.tolist()[0]
+    data['comments'] = df.comments.tolist()[0]
+    activity_date = df.activity_date.tolist()[0]
+    set_activity_id = df.activity_id.tolist()[0]
+    query = "select * from public.plan_activities"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    act_id = df.id.tolist()
+    act_name = df.activity_name.tolist()
+    activity = zip(act_id, act_name)
+    print(activity_date)
+    return render(request, 'planmodule/edit_mis_report_district_form.html',
+                  {'data': json.dumps(data, default=decimal_date_default),'activity':activity,'activity_date':activity_date,'set_activity_id':set_activity_id})
+
+
+
+@login_required
+def update_mis_report_district_form(request):
+    if request.POST:
+        mis_report_id = request.POST.get('mis_report_id')
+        activity_date = request.POST.get('activity_date')
+        activity_id = request.POST.get('activity_name')
+        number_of_activity = request.POST.get('number_of_activity')
+        male_boys_unmarried = request.POST.get('male_boys_unmarried')
+        male_boys_married = request.POST.get('male_boys_married')
+        female_girls_unmarried = request.POST.get('female_girls_unmarried')
+        female_girls_married = request.POST.get('female_girls_married')
+        comments = request.POST.get('comments')
+        update_query = "UPDATE public.plan_mis_report_district_form SET activity_date='"+str(activity_date)+"', activity_id="+str(activity_id)+", number_of_activity="+str(number_of_activity)+", male_boys_unmarried="+str(male_boys_unmarried)+", male_boys_married="+str(male_boys_married)+", female_girls_unmarried="+str(female_girls_unmarried)+", female_girls_married="+str(female_girls_married)+", comments='"+str(comments)+"' WHERE id="+str(mis_report_id)
+        __db_commit_query(update_query)
+    return HttpResponseRedirect("/planmodule/mis_report_district_list/")
