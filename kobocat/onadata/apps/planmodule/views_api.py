@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from django.db import connection
 from collections import OrderedDict
 from django.http import HttpResponse
@@ -152,3 +154,21 @@ def get_cmp_list(request):
     cmp_query = "SELECT pngo, district, upazila, union_name, mouza, village, para, survivor_child_name as adolescent_name, survivor_child_id as id_adolescent, sex, father_name, mother_name, date_birth, birth_place, birth_reg, date_chilc_marriage_prevented, date_proposed_marriage, person_involved_prevent, username,null as vigilance_one_mon,null as vigilance_three_mon,null as status_at_eighteen FROM public.vw_cmp_registration where union_name :: text = (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"'))"
     cmp_data = __db_fetch_values_dict(cmp_query)
     return HttpResponse(json.dumps(cmp_data))
+
+
+
+@csrf_exempt
+def get_lse_group_list(request):
+    username = request.GET.get('username')
+    lse_grp_list_query = "SELECT row_number() OVER () as serial_no,data_id,pngo, district, upazila, union_name, mouza, village, para, group_no, group_type,maritial_status, username FROM public.vw_grp_registration where union_name :: text = (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"'))"
+    lse_grp_list_data = __db_fetch_values_dict(lse_grp_list_query)
+    return HttpResponse(json.dumps(lse_grp_list_data))
+
+
+
+@csrf_exempt
+def get_comm_orientation_list(request):
+    username = request.GET.get('username')
+    comm_orientation_query = "SELECT date, case orientation_type When '1' then 'কমিউনিটি ওরিয়েন্টেশন' When '2' then 'ধর্মীয় নেতা' When '3' then 'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' When '4' then 'ইস্যুভিত্তিক মিটিং' end as orientation_type, count(data_id) as no_of_participants FROM public.vw_comm_orientation where union_name :: text =(SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"')) group by data_id,orientation_type,date order by date(date) DESC"
+    comm_orientation_data = __db_fetch_values_dict(comm_orientation_query)
+    return HttpResponse(json.dumps(comm_orientation_data))
