@@ -494,7 +494,7 @@ def dca_list(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "SELECT plan_dca.id, registration_date, COALESCE((select field_name from public.geo_data where id = district),'') district,COALESCE((select field_name from public.geo_data where id = upazilla),'') upazilla,(select activity_name from public.plan_activities where id = activity_id ) activity_name,case when activity_level = 1 then 'District' else 'Central' end activity_level, males, females FROM public.plan_dca,plan_dca_activities where plan_dca.id = plan_dca_activities.plan_dca_id and pngo_id in " + str(org)
+    query = "SELECT plan_dca.id, registration_date, COALESCE((select field_name from public.geo_data where id = district),'') district,COALESCE((select field_name from public.geo_data where id = upazilla),'') upazilla,(select activity_name from public.plan_activities where activity_value = activity_id limit 1) activity_name,case when activity_level = 2 then 'District' else 'Central' end activity_level, males, females FROM public.plan_dca,plan_dca_activities where plan_dca.id = plan_dca_activities.plan_dca_id and pngo_id in " + str(org)
     dca_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
 
     return render(request, 'planmodule/dca_list.html', {
@@ -516,10 +516,10 @@ def add_dca_form(request):
     df = pandas.read_sql(query, connection)
     org_id = df.id.tolist()[0]
     org_name = df.organization.tolist()[0]
-    query = "select * from public.plan_activities"
+    query = "select * from public.plan_activities where activity_type = 2"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
-    act_id = df.id.tolist()
+    act_id = df.activity_value.tolist()
     act_name = df.activity_name.tolist()
     activity = zip(act_id, act_name)
     return render(request, 'planmodule/add_dca_form.html',
@@ -545,7 +545,7 @@ def insert_dca_form(request):
         id = __db_fetch_single_value(insert_query)
         i = 0
         for each in activity_name:
-            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id, males, females) VALUES("+str(id)+", "+str(each)+", "+str(males[i])+", "+str(females[i])+"  )"
+            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id, males, females) VALUES("+str(id)+", '"+str(each)+"', "+str(males[i])+", "+str(females[i])+"  )"
             i = i+ 1
             __db_commit_query(q)
     return HttpResponseRedirect("/planmodule/dca_list/")
@@ -596,10 +596,10 @@ def edit_dca_form(request, dca_id):
     org_id = df.id.tolist()[0]
     org_name = df.organization.tolist()[0]
 
-    query = "select * from public.plan_activities"
+    query = "select * from public.plan_activities where activity_type = 2"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
-    act_id = df.id.tolist()
+    act_id = df.activity_value.tolist()
     act_name = df.activity_name.tolist()
     activity = zip(act_id, act_name)
 
@@ -641,7 +641,7 @@ def update_dca_form(request):
         id = __db_fetch_single_value(insert_query)
         i = 0
         for each in activity_name:
-            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id, males, females) VALUES("+str(id)+", "+str(each)+", "+str(males[i])+", "+str(females[i])+")"
+            q = "INSERT INTO public.plan_dca_activities (plan_dca_id, activity_id, males, females) VALUES("+str(id)+", '"+str(each)+"', "+str(males[i])+", "+str(females[i])+")"
             i = i+ 1
             __db_commit_query(q)
     return HttpResponseRedirect("/planmodule/dca_list/")
@@ -671,11 +671,11 @@ def mis_report_district_list(request):
         df = pandas.read_sql(query, connection)
         field_type_id = df.field_type_id.tolist()[0]
         if field_type_id == 88:
-            query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where activity_type = 3 and upazilla = "+str(geoid)+" and pngo_id in " + str(org)
+            query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where activity_value = activity_id limit 1) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where activity_type = 3 and upazilla = "+str(geoid)+" and pngo_id in " + str(org)
         else:
-            query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where district is not null and pngo_id in " + str(org)
+            query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where activity_value = activity_id limit 1) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where district is not null and pngo_id in " + str(org)
     else:
-        query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where pngo_id in " + str(org)
+        query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where activity_value = activity_id limit 1) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form where pngo_id in " + str(org)
     mis_report_district_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return render(request, 'planmodule/mis_report_district_list.html', {
         'mis_report_district_list': mis_report_district_list
@@ -684,10 +684,27 @@ def mis_report_district_list(request):
 
 @login_required
 def add_mis_report_district_form(request):
-    query = "select * from public.plan_activities"
+    user_id = request.user.id
+    query = "select geoid from public.usermodule_catchment_area where user_id =" + str(user_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
-    act_id = df.id.tolist()
+    if df.empty:
+        query = "select activity_value,activity_name from public.plan_activities where activity_type = 2"
+    else:
+        geoid = df.geoid.tolist()[0]
+        query_geo = "select field_type_id from geo_data where id =" + str(geoid)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query_geo, connection)
+        field_type_id = df.field_type_id.tolist()[0]
+        if field_type_id == 86:
+            query = "select activity_value,activity_name from public.plan_activities where activity_type = 2"
+        elif field_type_id == 88:
+            query = "select activity_value,activity_name from public.plan_activities where activity_type = 3"
+
+
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    act_id = df.activity_value.tolist()
     act_name = df.activity_name.tolist()
     activity = zip(act_id, act_name)
     return render(request, 'planmodule/add_mis_report_district_form.html',{'activity':activity})
@@ -734,16 +751,16 @@ def insert_mis_report_district_form(request):
                 upazilla = geoid
 
         if activity_type == 1:
-            insert_query = "INSERT INTO public.plan_mis_report_district_form(activity_date, activity_type, activity_id, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id) VALUES('"+str(activity_date)+"', "+str(activity_type)+", "+str(activity_id)+", "+str(number_of_activity)+", "+str(male_boys_unmarried)+", "+str(male_boys_married)+", "+str(female_girls_unmarried)+", "+str(female_girls_married)+",'"+str(comments)+"', "+str(pngo_id)+")"
+            insert_query = "INSERT INTO public.plan_mis_report_district_form(activity_date, activity_type, activity_id, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id) VALUES('"+str(activity_date)+"', "+str(activity_type)+", '"+str(activity_id)+"', "+str(number_of_activity)+", "+str(male_boys_unmarried)+", "+str(male_boys_married)+", "+str(female_girls_unmarried)+", "+str(female_girls_married)+",'"+str(comments)+"', "+str(pngo_id)+")"
         elif activity_type == 2:
             insert_query = "INSERT INTO public.plan_mis_report_district_form(activity_date, activity_type, activity_id, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, district) VALUES('" + str(
-                activity_date) + "', " + str(activity_type) + ", " + str(activity_id) + ", " + str(
+                activity_date) + "', " + str(activity_type) + ", '" + str(activity_id) + "', " + str(
                 number_of_activity) + ", " + str(male_boys_unmarried) + ", " + str(male_boys_married) + ", " + str(
                 female_girls_unmarried) + ", " + str(female_girls_married) + ",'" + str(comments) + "', " + str(
                 pngo_id) + "," + str(district) + ")"
         elif activity_type == 3:
             insert_query = "INSERT INTO public.plan_mis_report_district_form(activity_date, activity_type, activity_id, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, district, upazilla) VALUES('" + str(
-                activity_date) + "', " + str(activity_type) + ", " + str(activity_id) + ", " + str(
+                activity_date) + "', " + str(activity_type) + ", '" + str(activity_id) + "', " + str(
                 number_of_activity) + ", " + str(male_boys_unmarried) + ", " + str(male_boys_married) + ", " + str(
                 female_girls_unmarried) + ", " + str(female_girls_married) + ",'" + str(comments) + "', " + str(
                 pngo_id) + "," + str(district) + ", " + str(upazilla) + ")"
@@ -754,7 +771,7 @@ def insert_mis_report_district_form(request):
 
 @login_required
 def edit_mis_report_district_form(request, mis_report_id):
-    query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where id = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form  where id=" + str(mis_report_id)
+    query = "SELECT id, activity_date, activity_type, CASE WHEN activity_type = 1 THEN 'Central Level' WHEN activity_type = 2 THEN 'District Level' ELSE 'Upazilla Level' END activity_type_name, activity_id,(select activity_name from public.plan_activities where activity_value = activity_id) activity_name, number_of_activity, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married, comments, pngo_id, (select organization from public.usermodule_organizations where id = pngo_id) pngo_name, district district_id, coalesce((select field_name from geo_data where id = district),'') district_name, upazilla upazilla_id, coalesce((select field_name from geo_data where id = upazilla ),'') upazilla_name FROM plan_mis_report_district_form  where id=" + str(mis_report_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     data = {}
@@ -767,13 +784,28 @@ def edit_mis_report_district_form(request, mis_report_id):
     data['comments'] = df.comments.tolist()[0]
     activity_date = df.activity_date.tolist()[0]
     set_activity_id = df.activity_id.tolist()[0]
-    query = "select * from public.plan_activities"
+
+    user_id = request.user.id
+    query = "select geoid from public.usermodule_catchment_area where user_id =" + str(user_id)
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
-    act_id = df.id.tolist()
+    if df.empty:
+        query = "select activity_value,activity_name from public.plan_activities where activity_type = 2"
+    else:
+        geoid = df.geoid.tolist()[0]
+        query_geo = "select field_type_id from geo_data where id =" + str(geoid)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query_geo, connection)
+        field_type_id = df.field_type_id.tolist()[0]
+        if field_type_id == 86:
+            query = "select activity_value,activity_name from public.plan_activities where activity_type = 2"
+        elif field_type_id == 88:
+            query = "select activity_value,activity_name from public.plan_activities where activity_type = 3"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    act_id = df.activity_value.tolist()
     act_name = df.activity_name.tolist()
     activity = zip(act_id, act_name)
-    print(activity_date)
     return render(request, 'planmodule/edit_mis_report_district_form.html',
                   {'data': json.dumps(data, default=decimal_date_default),'activity':activity,'activity_date':activity_date,'set_activity_id':set_activity_id})
 
