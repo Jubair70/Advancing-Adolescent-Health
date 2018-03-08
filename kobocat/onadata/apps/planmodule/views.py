@@ -257,7 +257,7 @@ def getUpazilas(request):
 
 def getUnions(request):
     upazila = request.POST.get('upz')
-    union_query = "select id,field_name from geo_data where field_type_id = 89 and field_parent_id = " + str(upazila)
+    union_query = "select geocode as id,field_name from geo_data where field_type_id = 89 and field_parent_id = (select id from geo_data where geocode = '"+str(upazila)+"')"
     union_data = json.dumps(__db_fetch_values_dict(union_query))
     return HttpResponse(union_data)
 
@@ -482,6 +482,65 @@ def getScoreCardData(request):
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return HttpResponse(scorecard_list)
 
+
+@login_required
+def csa_report(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+    query = "with csa_reg as( select json->>'info/id_adolescent'id_adolescent,json->>'info/adolescent_name' adolescent_name,json->>'info/upazila' upazilla_id,json->>'info/union_name' union_id,json->>'business_start_month' business_start_month,(select id from public.usermodule_organizations where organization=(json->>'info/pngo'))pngo_id,json->>'info/pngo' pngo_name from public.logger_instance where xform_id = 555 and deleted_at is null) ,csa_reg_follow as ( select json->>'info/id_adolescent'id_adolescent,json->>'month' current_month,json->>'commodity_price' commodity_price,json->>'commodity_amount' commodity_amount,json->>'profit' profit,json->>'remarks' remarks from public.logger_instance where xform_id = 554 and deleted_at is null ) select csa_reg.*,current_month,commodity_price,commodity_amount,remarks,profit from csa_reg,csa_reg_follow where csa_reg.id_adolescent = csa_reg_follow.id_adolescent and pngo_id in " + str(org)
+    csa_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+
+    query_pngo = "select id,organization from public.usermodule_organizations where id in "+str(org)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_pngo,connection)
+    org_id = df.id.tolist()
+    org_name = df.organization.tolist()
+    organization = zip(org_id,org_name)
+
+    query = "select geocode,field_name from geo_data where field_type_id = 88 "
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    upz_id = df.geocode.tolist()
+    upz_name = df.field_name.tolist()
+    upazila = zip(upz_id, upz_name)
+
+    query = "select geocode,field_name from geo_data where field_type_id = 89"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    union_id = df.geocode.tolist()
+    union_name = df.field_name.tolist()
+    union = zip(union_id, union_name)
+
+    return render(request, 'planmodule/csa_report.html', {
+        'csa_list': csa_list,'organization':organization,'upazila':upazila,'union':union
+    })
+
+
+@login_required
+def getCSAData(request):
+    from_date = request.POST.get('from_date')
+    to_date = request.POST.get('to_date')
+    upazila = request.POST.get('upazila')
+    union = request.POST.get('union')
+    pngo = request.POST.get('pngo')
+
+    filter_query = "and  current_month between '" + str(from_date) + "' and '" + str(to_date) + "'"
+    if upazila !="":
+        filter_query += " and upazilla_id::int = "+str(upazila)
+    if pngo !="":
+        filter_query += " and pngo_id::int = "+str(pngo)
+    if union!="":
+        filter_query += " and union_id::int = " + str(union)
+    query = "with csa_reg as( select json->>'info/id_adolescent'id_adolescent,json->>'info/adolescent_name' adolescent_name,json->>'info/upazila' upazilla_id,json->>'info/union_name' union_id,json->>'business_start_month' business_start_month,(select id from public.usermodule_organizations where organization=(json->>'info/pngo'))pngo_id,json->>'info/pngo' pngo_name from public.logger_instance where xform_id = 555 and deleted_at is null) ,csa_reg_follow as ( select json->>'info/id_adolescent'id_adolescent,json->>'month' current_month,json->>'commodity_price' commodity_price,json->>'commodity_amount' commodity_amount,json->>'profit' profit,json->>'remarks' remarks from public.logger_instance where xform_id = 554 and deleted_at is null ) select csa_reg.*,current_month,commodity_price,commodity_amount,profit,remarks from csa_reg,csa_reg_follow where csa_reg.id_adolescent = csa_reg_follow.id_adolescent "+str(filter_query)
+    csa_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    return HttpResponse(csa_list)
 
 @login_required
 def dca_list(request):
