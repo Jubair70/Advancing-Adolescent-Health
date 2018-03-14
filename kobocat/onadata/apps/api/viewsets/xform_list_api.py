@@ -33,6 +33,8 @@ from onadata.apps.scheduling.models.geo_location_psu import GeoPsu
 from django.core import serializers
 from django.http import HttpResponse
 import json
+from collections import OrderedDict
+from django.db import connection
 
 
 # 10,000,000 bytes
@@ -59,7 +61,7 @@ class XFormListApi(viewsets.ReadOnlyModelViewSet):
             'X-OpenRosa-Accept-Content-Length': DEFAULT_CONTENT_LENGTH
         }
 
-    def mobile_login(self, request, *args, **kwargs):        
+    def mobile_login(self, request, *args, **kwargs):
         username = self.kwargs.get('username')
         #username = request.GET.get('username', '')
         password = request.GET.get('password', '')
@@ -71,6 +73,26 @@ class XFormListApi(viewsets.ReadOnlyModelViewSet):
         else:
             return Response(password, headers=self.get_openrosa_headers(), status=401)
     def mobile_login_response(self, username, password):
+        district = None
+        district_label = None
+        upazilla = None
+        upazilla_label = None
+        union_name = None
+        union_label = None
+        cursor = connection.cursor()
+        cursor.execute("WITH v AS(WITH k AS (WITH t AS (SELECT field_parent_id, field_name,geocode, id AS geoid FROM geo_data WHERE field_type_id = 89) SELECT (SELECT field_parent_id FROM geo_data WHERE id = t.field_parent_id) AS field_parent_id, (SELECT geocode FROM geo_data WHERE id = t.field_parent_id) AS upazilla, (SELECT field_name FROM geo_data WHERE id = t.field_parent_id) AS upazilla_label, t.field_name AS union_label, t.geocode AS union_name, t.geoid FROM t) SELECT (SELECT geocode FROM geo_data WHERE id = k.field_parent_id) AS district, (SELECT field_name FROM geo_data WHERE id = k.field_parent_id) AS district_label, upazilla, upazilla_label, union_name, union_label, k.geoid FROM k), p AS (SELECT * FROM usermodule_catchment_area) SELECT district, district_label, upazilla, upazilla_label, union_name, union_label FROM v, p WHERE v.geoid = p.geoid AND p.user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"')")
+        desc = cursor.description
+        geo_data = [OrderedDict(zip([col[0] for col in desc], row)) for row in cursor.fetchall()]
+        cursor.execute("select (select organization from usermodule_organizations where id = organisation_name_id) as pngo from usermodule_usermoduleprofile where user_id = (select id from auth_user where username = '"+str(username)+"')")
+        pngo = cursor.fetchone()[0]
+        cursor.close()
+        if geo_data:
+            district = geo_data[0]['district']
+            upazilla = geo_data[0]['upazilla']
+            union_name = geo_data[0]['union_name']
+            district_label = geo_data[0]['district_label']
+            upazilla_label = geo_data[0]['upazilla_label']
+            union_label = geo_data[0]['union_label']
         _psu_list = []
         user = get_object_or_404(User, username=username.lower())
         user_module_profile = UserModuleProfile.objects.get(user=user)
@@ -82,6 +104,13 @@ class XFormListApi(viewsets.ReadOnlyModelViewSet):
             'username': username,
             'password': password,
             'role': 'Enumerator',
+            'district':district,
+            'district_label':district_label,
+            'upazilla_label':upazilla_label,
+            'union_label':union_label,
+            'upazilla':upazilla,
+            'union_name':union_name,
+            'pngo':pngo
             #'PSU': _psu_list
         }
         # return dict(role='', PSU=psu)
