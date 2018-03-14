@@ -131,6 +131,8 @@
             $(document).ready(function () {
                 var datasource = {{ datasource| safe }}['list_of_dictionary'];
                 var check_node_already_expanded = [];
+                var geo_def_list = {{ geo_def_list | safe }};
+                var parent_list = {{ parent_list|safe }};
 
                 //var data_test = [{"id":1,"text":"Asia","population":null,"flagUrl":null,"checked":false,"hasChildren":true,"children":null},{"id":5,"text":"North America","population":null,"flagUrl":null,"checked":false,"hasChildren":true,"children":null},{"id":11,"text":"South America","population":null,"flagUrl":null,"checked":false,"hasChildren":true,"children":null},{"id":15,"text":"Europe","population":null,"flagUrl":null,"checked":false,"hasChildren":true,"children":null}];
                 var tree = $('#tree').tree({
@@ -180,6 +182,8 @@
                             for (each in result['list_of_dictionary'])
                                 tree.addNode(result['list_of_dictionary'][each], node);
                             getchecked();
+                            if(i<parent_list.length-1)
+                            tree.expand(tree.getNodeById(parent_list[i++]));
                             {#                        console.log(tree.getChildren(node));#}
                         }
                     });
@@ -200,6 +204,9 @@
 
                     }
                 }
+                i = 0;
+                if(parent_list.length)
+            tree.expand(tree.getNodeById(parent_list[i++]));
 
                 var json_content = {{ json_content|safe }};
                 var map_data = [];

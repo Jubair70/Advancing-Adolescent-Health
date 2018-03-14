@@ -23,18 +23,20 @@
                                 <label for="Field Name">Field Name:</label>
                                 <input type="text" class="form-control" name="field_name" id="field_name"
                                        value="{{ field_name }}" required>
+
                             </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-5">
                             <div class="form-group">
+                            <input type="hidden" name="field_type" value="{{ field_type_id }}" />
                                 <label for="Node Parent">Field Type:</label>
                                 <select class="form-control" onchange="load1(this)" name="field_type" id="field_type"
-                                        required>
+                                        disabled="disabled">
                                     <option value="{{ field_type_id }}">{{ field_type }}</option>
                                     {% for node_id,node_val in node %}
-                                        {% if node_val != field_type %}
+                                        {% if node_id != field_type_id %}
                                             <option value="{{ node_id }}">{{ node_val }}</option>
                                         {% endif %}
                                     {% endfor %}
@@ -49,7 +51,8 @@
                             <div class="form-group">
                                 <label for="Field Name">Geo Code:</label>
                                 <input type="text" class="form-control" name="geocode" id="geocode"
-                                       value="{{ geocode }}">
+                                       value="{{ geocode }}" required>
+                                <span style="color:red;font-weight:bold" id ="alert_geocode">Duplicate Geocode Not Accepted</span>
                             </div>
                         </div>
                     </div>
@@ -61,7 +64,6 @@
                             </div>
                         </div>
                     </div>
-
 
                     <div class="row">
                         <div class="col-md-12">
@@ -120,9 +122,9 @@
         var list_of_name_of_parents = list_of_both['list_of_name_of_parents'];
 
         $("#form_id").val({{ form_id | safe }});
+
         function intialize() {
             ajaxcall();
-
             objet = {{ field_type_id | safe }};
             $.ajax({
                 url: '/usermodule/tree/',
@@ -133,6 +135,7 @@
                     response = result.response_record;
                     $("#parent_id").val(result.parent_id);
                     if (Object.keys(response).length) {
+                        console.log("First");
                         intialize_load(list_of_id_of_parents.length - 1, list_of_name_of_parents.length - 1, parseInt(Object.keys(response)[0]));
                     }
                 }
@@ -149,18 +152,26 @@
                 data: {'field_type': field_type},
                 success: function (result) {
                     html_code = "<label class=\"control-label\" id=\"field_parent_" + field_type + "\" >" + result.field_type_name + "</label>";
-                    html_code += "<select required class=\"form-control\" name=\"field_parent_" + field_type + "\" id=\"field_parent_" + field_type + "\"  onchange = \"filtering(this," + response[field_type] + ")\" >";
+                    html_code += "<select required class=\"form-control\" name=\"field_parent_" + field_type + "\" id=\"field_parent_" + field_type + "\"  onchange = \"filtering(this," + response[field_type] + ")\" {% if dependency == 1 %} disabled {% endif %}>";
                     html_code += "<option  value=\"" + list_of_id_of_parents[id] + "\">" + list_of_name_of_parents[name] + "</option>";
 
+
+                    input_html = "<input type=\"hidden\" name=\"field_parent_"+ field_type + "\" value=\""+list_of_id_of_parents[id]+"\" />";
                     for (i = 0; i < result.field_name.length; i++) {
                         if(result.field_id[i]!=list_of_id_of_parents[id])
                             html_code += "<option value=\"" + result.field_id[i] + "\">" + result.field_name[i] + "</option>";
                     }
                     html_code += "</select>";
                     $(".field_parent").append(html_code);
+
+                    var dependency = {{ dependency |safe }};
+                    if(dependency)
+                    {
+                        $(".field_parent").append(input_html);
+                    }
                     var start = response[obj];
                     if (start != objet)
-                        intialize_filtering(id - 1, name - 1, start);
+                        intialize_filtering(id - 1, name - 1, start),console.log(start),console.log("Second");;
                 }
             });
         }
@@ -176,17 +187,23 @@
                 success: function (result) {
                     //console.log("field_type "+ result.field_type);
                     html_code = "<label class=\"control-label\" id=\"field_parent_" + field_type_id + "\">" + result.field_type + "</label>";
-                    html_code += "<select align=\"center\" required class=\"form-control\" name =\"field_parent_" + field_type_id + "\"  id=\"field_parent_" + field_type_id + "\" onchange = \"filtering(this," + response[field_type_id] + ")\">";
+                    html_code += "<select align=\"center\" required class=\"form-control\" name =\"field_parent_" + field_type_id + "\"  id=\"field_parent_" + field_type_id + "\" onchange = \"filtering(this," + response[field_type_id] + ")\" {% if dependency == 1 %} disabled {% endif %}>";
                     html_code += "<option value=\"" + list_of_id_of_parents[id] + "\" >" + list_of_name_of_parents[name] + "</option>";
+                    input_html = "<input type=\"hidden\" name=\"field_parent_"+ field_type_id + "\" value=\""+list_of_id_of_parents[id]+"\" />";
                     for (i = 0; i < result.field_name.length; i++) {
                         if(result.field_id[i]!=list_of_id_of_parents[id])
                         html_code += "<option value=\"" + result.field_id[i] + "\">" + result.field_name[i] + "</option>";
                     }
                     html_code += "</select>";
                     $(".field_parent").append(html_code);
+                    var dependency = {{ dependency |safe }};
+                    if(dependency)
+                    {
+                        $(".field_parent").append(input_html);
+                    }
                     var start = response[field_type_id];
                     if (start != objet)
-                        intialize_filtering(id - 1, name - 1, start);
+                        intialize_filtering(id - 1, name - 1, start),console.log(start),console.log("Third");;
 
                 }
             });
@@ -261,12 +278,63 @@
                         html_code += "<option value=\"" + result.field_id[i] + "\">" + result.field_name[i] + "</option>";
                     }
                     html_code += "</select>";
+                    geocode = result.geocode;
                     if (field_type_id != objet)
                         $(".field_parent").append(html_code);
 
                 }
             });
         }
+
+        $('#alert_geocode').hide();
+        var geocode={{ all_geocode|safe }};
+        var set_geocode = {{ geocode|safe }};
+        var prev_parent = {{ field_parent_id |default_if_none:"0"}};
+
+
+        $('#geocode').on('keyup', function () {
+            var geo_value = $('#geocode').val();
+            var curr_parent = $('.field_parent').children().last().val();
+
+            if (curr_parent == prev_parent) {
+                if (set_geocode != geo_value && geocode.includes(geo_value))
+                    $('#alert_geocode').show();
+                else $('#alert_geocode').hide();
+            }
+            else {
+                if (geocode.includes(geo_value))
+                    $('#alert_geocode').show();
+                else $('#alert_geocode').hide();
+            }
+
+
+        });
+
+        $('#submit').on('click', function () {
+            var geo_value = $('#geocode').val();
+            var curr_parent = $('.field_parent').children().last().val();
+
+            if (curr_parent == prev_parent||typeof curr_parent=="undefined") {
+                if (set_geocode != geo_value && geocode.includes(geo_value)) {
+                    $('#alert_geocode').show();
+                    return false;
+                }
+                else {
+                    $('#alert_geocode').hide();
+                    return true;
+                }
+            }
+            else {
+                if (geocode.includes(geo_value)) {
+                    $('#alert_geocode').show();
+                    return false;
+                }
+                else {
+                    $('#alert_geocode').hide();
+                    return true;
+                }
+            }
+        });
 
 
     </script>

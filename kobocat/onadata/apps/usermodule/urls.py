@@ -72,6 +72,7 @@ urlpatterns = patterns('',
     url(r'^filtering/$', views.filtering, name='filterin'),
     url(r'^catchment_tree/(?P<user_id>\d+)/$', views.catchment_tree_test, name='catchment_tree'),
     url(r'^add_children/$', views.add_children, name='add_children'),
+    url(r'^check_for_delete/$', views.check_for_delete, name='check_for_delete'),
 
     url(r'^catchment_data_insert/$', views.catchment_data_insert, name='catchment_data_insert'),
     url(r'^edit_form_definition/(?P<form_definition_id>\d+)/$', views.edit_form_definition, name='edit_form_definition'),

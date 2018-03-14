@@ -13,7 +13,7 @@
 
     <div class="portlet box red">
         <div class="portlet-title">
-            <div class="caption"><i class="fa fa-adn"></i>Score Card</div>
+            <div class="caption"><i class="fa fa-adn"></i>CSA Report</div>
         </div>
         <div class="portlet-body">
             <div class="row">
@@ -21,7 +21,7 @@
                     <div class="form-group">
                         <label>From Date: </label>
                         <div class="ui calendar" id="from_date">
-                            <input type="text" class="form-control"  name="from_date" value="getDesiredDate(1)"  readonly>
+                            <input type="text" class="form-control"  name="from_date" value="January 2018" readonly>
                         </div>
                     </div>
                 </div>
@@ -30,7 +30,7 @@
                     <div class="form-group">
                         <label>To Date: </label>
                         <div class="ui calendar" id="to_date">
-                            <input type="text" class="form-control" name="to_date" value="getToday(2)"  readonly>
+                            <input type="text" class="form-control" name="to_date"  value="February 2018" readonly>
                         </div>
                     </div>
                 </div>
@@ -245,70 +245,62 @@
 
 
         $('#from_date').calendar({
-            type: 'date', endCalendar: $('#to_date'),
+            type: 'month', endCalendar: $('#to_date'),
             popupOptions: {
                 position: 'bottom right'
             },
-            formatter: {
-                date: function (date, settings) {
-                    if (!date) return '';
 
-                    var day = date.getDate();
-                    var month = date.getMonth() + 1;
-                    var year = date.getFullYear();
 
-                    if (day < 10) {
-                        day = '0' + day
-                    }
-                    if (month < 10) {
-                        month = '0' + month
-                    }
-                    return year + '-' + month + '-' + day;
-                }
-            }
         });
+
 
         $('#to_date').calendar({
-            type: 'date',
+            type: 'month',
             popupOptions: {
                 position: 'bottom right'
-            }
-            ,
+            },
 
-            formatter: {
-                date: function (date, settings) {
-                    if (!date) return '';
-
-                    var day = date.getDate();
-                    var month = date.getMonth() + 1;
-                    var year = date.getFullYear();
-
-                    if (day < 10) {
-                        day = '0' + day
-                    }
-                    if (month < 10) {
-                        month = '0' + month
-                    }
-                    return year + '-' + month + '-' + day;
-                }
-            }
+{#            ,#}
+{##}
+{#            formatter: {#}
+{#                date: function (date, settings) {#}
+{#                    if (!date) return '';#}
+{##}
+{#                    var day = date.getDate();#}
+{#                    var month = date.getMonth() + 1;#}
+{#                    var year = date.getFullYear();#}
+{##}
+{#                    if (day < 10) {#}
+{#                        day = '0' + day#}
+{#                    }#}
+{#                    if (month < 10) {#}
+{#                        month = '0' + month#}
+{#                    }#}
+{#                    return year + '-' + month + '-' + day;#}
+{#                }#}
+{#            }#}
         });
+
+        $('#from_date').calendar('set date',getDesiredDate(2));
+        $('#to_date').calendar('set date',getDesiredDate(1));
 
         $('#generate_report').on('click',function () {
             console.log("sfsfv");
              table.destroy();
 
             var from_date = $('#from_date').calendar('get date');
+
             var to_date = $('#to_date').calendar('get date');
             var upazila = $('#upazila option:selected').val();
             var pngo = $('#pngo option:selected').val();
             var union = $('#union option:selected').val();
             if(from_date != null)
-                from_date = getFormattedDate(from_date)
+                from_date = getFormattedDate(from_date)+'-01'
             else from_date=""
             if(to_date != null)
-                to_date = getFormattedDate(to_date)
+                to_date = getFormattedDate(to_date)+'31';
             else to_date = ""
+            console.log(from_date);
             if(upazila==null)
                 upazila=""
             if(pngo==null)
@@ -481,15 +473,15 @@
         function getFormattedDate(date) {
                 var yy = date.getFullYear();
                 var mm = date.getMonth() + 1;
-                var dd = date.getDate();
-                if (dd < 10) {
-                    dd = '0' + dd
-                }
+{#                var dd = date.getDate();#}
+{#                if (dd < 10) {#}
+{#                    dd = '0' + dd#}
+{#                }#}
                 if (mm < 10) {
                     mm = '0' + mm
                 }
                 {#                formatted_date = yyyy + '-' + mm + '-' + dd;#}
-                formatted_date = yy + '-' + mm + '-' + dd;
+                formatted_date = yy + '-' + mm ;
                 return formatted_date;
             }
 
