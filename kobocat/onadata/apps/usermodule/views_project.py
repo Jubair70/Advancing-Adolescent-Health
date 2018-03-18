@@ -375,8 +375,8 @@ def custom_project_window(request, username, id_string,**kwargs):
         for f in form_data:
             if f['_field_name'] not in omitFieldsLang:
                 first_field = f['_q_title']
-                print "data"
-                print first_field
+                #print "data"
+                #print first_field
                 break
         if first_field.startswith('{'):
             languages = sjson.loads(first_field).keys()

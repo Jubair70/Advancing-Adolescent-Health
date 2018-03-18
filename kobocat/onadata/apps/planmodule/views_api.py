@@ -5,10 +5,18 @@ from collections import OrderedDict
 from django.http import HttpResponse
 import dateutil.parser
 from django.contrib.auth.models import User
-from onadata.apps.usermodule.models import UserModuleProfile, Organizations
 from django.views.decorators.csrf import csrf_exempt
 import json
 import csv
+from django.shortcuts import render
+import os
+from django.core.files.storage import FileSystemStorage
+import pandas as pd
+import datetime
+import requests
+import xml.etree.ElementTree as ET
+
+
 
 
 def __db_fetch_values(query):
@@ -43,6 +51,12 @@ def __db_fetch_values_dict(query):
     cursor.close()
     return fetchVal
 
+def __db_commit_query_void(query):
+    cursor = connection.cursor()
+    cursor.execute(query)
+    connection.commit()
+    cursor.close()
+
 
 def dictfetchall(cursor):
     desc = cursor.description
@@ -67,7 +81,7 @@ def register_household(unregistered_hh):
     district = unregistered_hh['json']['district']
     upazila = unregistered_hh['json']['upazila']
     union_name = unregistered_hh['json']['union_name']
-    mouza = unregistered_hh['json']['mouza']
+    #mouza = unregistered_hh['json']['mouza']
     village = unregistered_hh['json']['village']
     para = unregistered_hh['json']['para']
     hh_no = unregistered_hh['json']['hh_no']
@@ -88,7 +102,7 @@ def register_household(unregistered_hh):
 
     hh_id = __db_commit_query(
         "INSERT INTO public.plan_household_profile (id, district, upazila, union_name, mouza, village, para, hh_no, hh_head, respondent_name, ethnicity, hh_member, member_aged_8_19y, latitude, longitude, pngo_id, created_at, created_by, updated_at, updated_by) VALUES(nextval('plan_household_profile_id_seq'::regclass), " + str(
-            district) + ", " + str(upazila) + ", " + str(union_name) + ", " + str(mouza) + ", " + str(
+            district) + ", " + str(upazila) + ", " + str(union_name) + ", 0, " + str(
             village) + ", " + str(para) + ", '" + str(hh_no) + "', '" + str(
             hh_head) + "', '" + respondent_name + "', " + str(ethnicity) + ", " + str(hh_member) + ", " + str(
             member_aged_8_19y) + ", '" + str(latitude) + "', '" + str(longitude) + "', '" + str(pngo_id) + "', '" + str(
@@ -158,7 +172,7 @@ def register_adolescents(unregistered_hh, hh_id):
 @csrf_exempt
 def get_adolescent_list(request):
     username = request.GET.get('username')
-    adolescent_query = " WITH w AS(WITH t AS (SELECT id AS aid, hh_id, adolescent_name, id_adolescent, sex, age, have_birth_reg, relation, going_school, work_wage, disable, mobile, mobile_owner, maritial_status, marriage_reg, maritial_duration, child_any, child_num, pregnant_currently FROM plan_adolescents_profile), s AS (SELECT id, district, upazila, union_name, mouza, village, para, hh_head, hh_no, pngo_id FROM plan_household_profile) SELECT * FROM t, s WHERE t.hh_id = s.id) SELECT DISTINCT ON (id_adolescent) aid, pngo_id, district, upazila, union_name, mouza, village, para, hh_head, hh_no, adolescent_name, id_adolescent, sex, age, have_birth_reg, relation, going_school, work_wage, disable, mobile, mobile_owner, maritial_status, marriage_reg, maritial_duration, child_any, child_num, pregnant_currently, (select person_name from plan_hh_living_person where person_type = 1 and hh_id = hh_id limit 1) as father_name, (select person_name from plan_hh_living_person where person_type = 2 and hh_id = hh_id limit 1) as mother_name, (select person_name from plan_hh_living_person where person_type = 3 and hh_id = hh_id limit 1) as husband_wife_name, (select person_name from plan_hh_living_person where person_type = 4 and hh_id = hh_id limit 1) as father_in_law_name, (select person_name from plan_hh_living_person where person_type = 5 and hh_id = hh_id limit 1) as mother_in_law_name FROM w WHERE union_name :: text = (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
+    adolescent_query = "WITH w AS(WITH t AS( SELECT id AS aid, hh_id, adolescent_name, id_adolescent, sex, age, have_birth_reg, relation, going_school, work_wage, disable, mobile, mobile_owner, maritial_status, marriage_reg, maritial_duration, child_any, child_num, pregnant_currently FROM plan_adolescents_profile), s AS ( SELECT id, district, upazila, union_name, mouza, village, para, hh_head, hh_no, pngo_id FROM plan_household_profile) SELECT * FROM t, s WHERE t.hh_id = s.id) SELECT DISTINCT ON ( id_adolescent) aid, pngo_id, district, upazila, union_name, mouza, village, para, hh_head, hh_no, adolescent_name, id_adolescent, sex, age, have_birth_reg, relation, going_school, work_wage, disable, mobile, mobile_owner, maritial_status, marriage_reg, maritial_duration, child_any, child_num, pregnant_currently, ( SELECT person_name FROM plan_hh_living_person WHERE person_type = 1 AND hh_id = w.hh_id limit 1) AS father_name, ( SELECT person_name FROM plan_hh_living_person WHERE person_type = 2 AND hh_id = w.hh_id limit 1) AS mother_name, ( SELECT person_name FROM plan_hh_living_person WHERE person_type = 3 AND hh_id = w.hh_id limit 1) AS husband_wife_name, ( SELECT person_name FROM plan_hh_living_person WHERE person_type = 4 AND hh_id = w.hh_id limit 1) AS father_in_law_name, ( SELECT person_name FROM plan_hh_living_person WHERE person_type = 5 AND hh_id = w.hh_id limit 1) AS mother_in_law_name FROM w WHERE union_name :: text = ( SELECT ( SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = ( SELECT id FROM auth_user WHERE username = '" + str(
         username) + "'))"
     adolescent_data = __db_fetch_values_dict(adolescent_query)
     return HttpResponse(json.dumps(adolescent_data))
@@ -167,8 +181,7 @@ def get_adolescent_list(request):
 @csrf_exempt
 def get_cmp_list(request):
     username = request.GET.get('username')
-    cmp_query = "SELECT pngo, district, upazila, union_name, mouza, village, para, adolescent_name, id_adolescent, sex, father_name, mother_name, date_birth, birth_place, birth_reg, date_chilc_marriage_prevented, date_proposed_marriage, person_involved_prevent, username,null as vigilance_one_mon,null as vigilance_three_mon,null as status_at_eighteen FROM public.vw_cmp_registration where union_name :: text = (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
-        username) + "'))"
+    cmp_query = "SELECT pngo, district, upazila, union_name, mouza, village, para, adolescent_name, id_adolescent, sex, father_name, mother_name, date_birth, birth_place, birth_reg, date_chilc_marriage_prevented, date_proposed_marriage, person_involved_prevent, username,(select case status when '1' then 'Married' when '2' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 1) as vigilance_one_mon,(select case status when '1' then 'Married' when '2' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 2) as vigilance_three_mon,(select case status when '1' then 'Married' when '2' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 3) as status_at_eighteen FROM public.vw_cmp_registration vcr where union_name :: text = (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"'))"
     cmp_data = __db_fetch_values_dict(cmp_query)
     return HttpResponse(json.dumps(cmp_data))
 
@@ -185,7 +198,7 @@ def get_lse_group_list(request):
 @csrf_exempt
 def get_comm_orientation_list(request):
     username = request.GET.get('username')
-    comm_orientation_query = "SELECT date, case orientation_type When '1' then 'কমিউনিটি ওরিয়েন্টেশন' When '2' then 'ধর্মীয় নেতা' When '3' then 'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' When '4' then 'ইস্যুভিত্তিক মিটিং' end as orientation_type, count(data_id) as no_of_participants FROM public.vw_comm_orientation where union_name :: text =(SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
+    comm_orientation_query = "SELECT row_number() OVER () as serial_no, date, case orientation_type When '1' then 'কমিউনিটি ওরিয়েন্টেশন' When '2' then 'ধর্মীয় নেতা' When '3' then 'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' When '4' then 'ইস্যুভিত্তিক মিটিং' end as orientation_type, count(data_id) as no_of_participants FROM public.vw_comm_orientation where union_name :: text =(SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
         username) + "')) group by data_id,orientation_type,date order by date(date) DESC"
     comm_orientation_data = __db_fetch_values_dict(comm_orientation_query)
     return HttpResponse(json.dumps(comm_orientation_data))
@@ -208,12 +221,13 @@ def get_adolescent_list_by_group(request):
     # return HttpResponse(json.dumps(adolescent_list_data))
 
     curated_data = []
-    group_attendance_data = __db_fetch_values_dict(
-        "with v as(with t as(select session_date,group_id, unnest(string_to_array(adolescent_name, ' ')) as id_adolescent,session,'1' as session_type from vw_grp_reg_sessions union all select session_date,group_id, unnest(string_to_array(adolescent_name, ' ')) as id_adolescent,session,'2' as session_type from vw_grp_mkp_sessions) select distinct on (id_adolescent,session) * from t), n as(with m as(select group_id, unnest(string_to_array(adolescent_name, ' ')) as id_adolescent from vw_lse_grp_members) select m.id_adolescent,m.group_id,(select adolescent_name from plan_adolescents_profile where id_adolescent = m.id_adolescent) as adolescent_name from m) select n.id_adolescent,(select adolescent_name from plan_adolescents_profile where id_adolescent = n.id_adolescent) as adolescent_name,session,session_type from v,n where v.group_id = n.group_id and v.id_adolescent = n.id_adolescent and v.group_id::int = " + str(
-            group_id))
-    group_all_session_list = list(sum(__db_fetch_values(
-        "with q as( select json_array_elements((json::json->'choices')->'session') as choices from logger_xform where id = 558) select choices->>'name' as name from q where choices->>'myfilter' =(select group_type from vw_grp_registration where data_id = " + str(
-            group_id) + ")"), ()))
+    group_attendance_data = __db_fetch_values_dict("WITH v AS(WITH t AS( SELECT session_date, group_id, Unnest(String_to_array(adolescent_name, ' ')) AS id_adolescent, session, '1' AS session_type FROM vw_grp_reg_sessions UNION ALL SELECT session_date, group_id, Unnest(String_to_array(adolescent_name, ' ')) AS id_adolescent, session, '2' AS session_type FROM vw_grp_mkp_sessions) SELECT DISTINCT ON ( id_adolescent,session) * FROM t), n AS(WITH m AS ( SELECT group_id, Unnest(String_to_array(adolescent_name, ' ')) AS id_adolescent FROM vw_lse_grp_members) SELECT m.id_adolescent, m.group_id, ( SELECT adolescent_name FROM plan_adolescents_profile WHERE id_adolescent = m.id_adolescent) AS adolescent_name FROM m) SELECT n.id_adolescent, ( SELECT adolescent_name FROM plan_adolescents_profile WHERE id_adolescent = n.id_adolescent) AS adolescent_name, session, session_type FROM v, n WHERE v.group_id = n.group_id AND v.id_adolescent = n.id_adolescent AND v.group_id::int = "+str(group_id)+" union all (with h as(select group_id,unnest(string_to_array(adolescent_name, ' ')) as id_adolescent from vw_lse_grp_members where group_id is not null and group_id not in (select distinct group_id from vw_grp_reg_sessions union select distinct group_id from vw_grp_mkp_sessions) and group_id::int = "+str(group_id)+") select h.id_adolescent,(select adolescent_name from plan_adolescents_profile where id_adolescent = h.id_adolescent) as adolescent_name,0::text as session,null as session_type from h)")
+
+    #group_all_session_list = list(sum(__db_fetch_values("with q as( select json_array_elements((json::json->'choices')->'session') as choices from logger_xform where id = 558) select choices->>'name' as name from q where choices->>'myfilter' =(select group_type from vw_grp_registration where data_id = " + str(group_id) + ")"), ()))
+
+    group_all_session_list = __db_fetch_values("select distinct session::text from vw_grp_reg_sessions where group_id::int = " + str(group_id) +"")
+
+    group_all_session_list =  list(sum(group_all_session_list,()))
 
     adolescent_sessions = {}
     listed_adols = []
@@ -245,6 +259,7 @@ def get_adolescent_list_by_group(request):
             del new_od['session_type']
             new_od.update({'sessions': sessions})
             curated_data.append(new_od)
+
     return HttpResponse(json.dumps(curated_data))
 
 
@@ -284,3 +299,132 @@ def get_makeup_session_data(request):
     for data in makeup_session_data:
         writer.writerow([data[0].encode('utf-8'), data[1].encode('utf-8'),data[2].encode('utf-8'), data[3].encode('utf-8')])
     return response
+
+
+def get_geolocation_csv(request):
+    username = request.GET.get('username')
+    geolocation_query = "with g as(with n as(with m as(with t as(select geoid from usermodule_catchment_area where user_id =(select id from auth_user where username = '"+str(username)+"')), s as (select * from geo_data) select t.geoid,s.field_name,s.geocode,s.field_parent_id from t,s where s.id = t.geoid) select (select field_parent_id from geo_data where id = m.field_parent_id) as field_parent_id,(select geocode from geo_data where id = m.field_parent_id) as upazila_code,m.geoid,m.field_name,m.geocode from m) select n.geoid,(select geocode from geo_data where id = n.field_parent_id) as district_code,n.upazila_code,n.geocode as union_code from n) select 'district' as list_name,field_name as label,geocode as name, null as district,null as upazilla,null as union_name,null as village from geo_data,g where field_type_id = 86 and geocode = g.district_code union all select 'upazila' as list_name,field_name as label,gd.geocode as name, (select geocode from geo_data where id = gd.field_parent_id) as district,null as upazilla,null as union_name,null as village from geo_data gd,g where field_type_id = 88 and geocode = upazila_code union all select 'union_name' as list_name,field_name as label,gd.geocode as name, SUBSTR(geocode, 1, 2) as district,(select geocode from geo_data where id = gd.field_parent_id) as upazilla,null as union_name,null as village from geo_data gd,g where field_type_id = 89 and geocode = union_code union all select 'village' as list_name,field_name as label,gd.geocode as name, SUBSTR(geocode, 1, 2) as district,SUBSTR(geocode, 1, 4) as upazilla,(select geocode from geo_data where id = gd.field_parent_id) as union_name,null as village from geo_data gd,g where field_type_id = 92 and field_parent_id = g.geoid union all select 'para' as list_name,field_name as label,gd.geocode as name, SUBSTR(geocode, 1, 2) as district,SUBSTR(geocode, 1, 4) as upazilla,SUBSTR(geocode, 1, 6) as union_name,(select geocode from geo_data where id = gd.field_parent_id) as village from geo_data gd,g where field_type_id = 93 and geocode LIKE g.union_code || '%'"
+    geolocation_data = __db_fetch_values(geolocation_query)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="itemsets.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['list_name', 'label', 'name', 'district','upazila', 'union_name','village'])
+    for data in geolocation_data:
+        writer.writerow([data[0], data[1],data[2], data[3], data[4],data[5], data[6]])
+    return response
+
+
+def upload_monthly_target_plan(request):
+    if request.method == 'POST' and request.FILES['target_file']:
+        upload_month = request.POST.get('upload_month')
+
+        activity_date = datetime.datetime.strptime(upload_month, "%B %Y")
+
+        target_file = request.FILES['target_file']
+        fs = FileSystemStorage(location='targetforms')
+        filename = fs.save(target_file.name, target_file)
+        uploaded_file_path = fs.path(filename)
+
+        df = pd.read_excel(uploaded_file_path, 'MIS Target Form', index_col=None,
+                           header=1, na_values=['NaN'],
+                           parse_cols="D,J,K,L,M", skiprows=2)
+
+        df.rename(columns={'Unnamed: 0': 'subindicator'}, inplace=True)
+        df.rename(columns={'Married': 'male_boys_married'}, inplace=True)
+        df.rename(columns={'Unmarried': 'male_boys_unmarried'}, inplace=True)
+        df.rename(columns={'Married.1': 'female_girls_married'}, inplace=True)
+        df.rename(columns={'Unmarried.1': 'female_girls_unmarried'}, inplace=True)
+        df['activity_date'] = activity_date
+
+        df.dropna(subset=['male_boys_married', 'male_boys_unmarried', 'female_girls_married', 'female_girls_unmarried'],
+                  how='all', inplace=True)
+
+        for index, row in df.iterrows():
+            check_update_insert(row)
+
+    return render(request, 'planmodule/upload_mon_target.html')
+
+
+
+
+
+def check_update_insert(row):
+    row.fillna(0, inplace=True)
+    check_data = __db_fetch_single_value("select count(*) from plan_mis_monthly_target where subindicator = '"+str(row['subindicator'])+"' and activity_date = DATE('"+str(row['activity_date'])+"')")
+    if check_data == 0:
+        __db_commit_query_void("INSERT INTO public.plan_mis_monthly_target (id, activity_date, subindicator, male_boys_unmarried, male_boys_married, female_girls_unmarried, female_girls_married) VALUES(nextval('plan_mis_monthly_target_id_seq'::regclass), DATE('"+str(row['activity_date'])+"'), '"+str(row['subindicator'])+"', "+str(row['male_boys_unmarried'])+", "+str(row['male_boys_married'])+", "+str(row['female_girls_unmarried'])+", "+str(row['female_girls_married'])+")")
+    else:
+        __db_commit_query_void("UPDATE public.plan_mis_monthly_target SET male_boys_unmarried="+str(row['male_boys_unmarried'])+", male_boys_married="+str(row['male_boys_married'])+", female_girls_unmarried="+str(row['female_girls_unmarried'])+", female_girls_married="+str(row['female_girls_married'])+" where subindicator = '"+str(row['subindicator'])+"' and activity_date = DATE('"+str(row['activity_date'])+"')")
+
+
+def get_marriage_info_list(request):
+    username = request.GET.get('username')
+    marriage_info_query = "SELECT data_id, pngo,(select field_name from geo_data where geocode = district) as district, (select field_name from geo_data where geocode = upazila) as upazila, (select field_name from geo_data where geocode = union_name) as union_name, (select field_name from geo_data where geocode = village) as village, (select field_name from geo_data where geocode = para) as para, adolescent_name, birth_date, age, guardian_name, marriage_date, age_marriage_time, case is_child_marriage when '1' then 'Yes' when '2' then 'No' end as is_child_marriage, case religion when '1' then 'ইসলাম' when '2' then 'সনাতন' when '3' then 'খ্রিস্টান' when '4' then 'অন্যান্য' end as religion, case signed_marriage_registration when '1' then 'Yes' when '2' then 'No' end as signed_marriage_registration, case got_benefit_from_project when '1' then 'Yes' when '2' then 'No' end as got_benefit_from_project, case got_life_skill_session when '1' then 'Yes' when '2' then 'No' end as got_life_skill_session, case family_condition when '1' then 'হত-দরিদ্র' when '2' then 'দরিদ্র' when '3' then 'নিম্নবিত্ত' when '4' then 'নিম্নমধ্যবিত্ত' when '5' then 'মধ্যবিত্ত' when '6' then 'উচ্চ মধ্যবিত্ত' when '7' then 'উচ্চবিত্ত' end as family_condition, case hh_head_occupation WHEN '1' then 'কৃষিজীবি' WHEN '2' then 'মৎসজীবি' WHEN '3' then 'দিন মজুরী' WHEN '4' then 'ক্ষুদ্র ব্যবসা ' WHEN '5' then 'ব্যবসা' WHEN '6' then 'রিক্সা/ভ্যান চালক' WHEN '7' then 'চাকুরী' WHEN '8' then 'শিক্ষক' WHEN '9' then 'গৃহীণি' WHEN '99' then 'অন্যান্য' end as hh_head_occupation, education_qualification, case dropped_from_school when '1' then 'Yes' when '2' then 'No' end as dropped_from_school, school_name, case maritial_status when '1' then '১ম' when '2' then '২য়' when '3' then '৩য়' end as maritial_status, husband_info, husband_name, husband_birth_date, husband_age, case husband_occupation when '1' then 'কৃষিজীবি' when '2' then 'মৎসজীবি' when '3' then 'দিন মজুরী' when '4' then 'ক্ষুদ্র ব্যবসা ' when '5' then 'ব্যবসা' when '6' then 'রিক্সা/ভ্যান চালক' when '7' then 'চাকুরী' when '99' then 'অন্যান্য' end as husband_occupation, husband_edu_qualification, case husband_same_locality when '1' then 'Yes' when '2' then 'No' end as husband_same_locality, case child_marriage_cause when '1' then 'অর্থনৈতিক কারণ (খাওয়ার জন্য একটি মুখ কমেছে)' when '2' then 'নিরাপত্তাজনিত কারণ' when '3' then 'সাংস্কৃতিক কারণ (সামাজিক চর্চা)' when '4' then 'ভাল পাত্র' when '5' then 'মাসিক শুরু হয়েছে' when '6' then 'পারিবারিক সম্মান (কুৎসার ভয়ে, প্রেমে পড়া, রাজনৈতিক নেতার নজর)' when '7' then 'স্কুল ছেড়ে দিয়েছিল' when '8' then 'কিছু করছিলো না' when '99' then 'অন্যান্য' end as child_marriage_cause, date, username FROM public.vw_plan_marriage_info WHERE union_name :: text = ( SELECT ( SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = ( SELECT id FROM auth_user WHERE username = '"+str(username)+"'))"
+    marriage_info_data = __db_fetch_values_dict(marriage_info_query)
+    return HttpResponse(json.dumps(marriage_info_data))
+
+
+def quryExecution(query):
+    cursor = connection.cursor()
+    cursor.execute(query)
+    value = cursor.fetchone()
+    cursor.close()
+    return value
+
+
+def commnity_orientation_form(request):
+    id_string = 'commnity_orientation'
+    query = "SELECT id, uuid  FROM logger_xform where id_string = 'community_orientation'"
+    queryResult = quryExecution(query)
+    xform_id = queryResult[0]
+    form_uuid = str(queryResult[1])
+    username = request.user.username
+    select_data = json.dumps(__db_fetch_values_dict("select replace(field_name,'/','__') as field_name,value_text,value_label::json->>'bangla' as bn_label,value_label::json->>'English' as en_label from xform_extracted where xform_id = (select id from public.logger_xform where id_string = '"+str(id_string)+"') and field_type in ('select one','select all that apply') "))
+
+    return render(request, "planmodule/commnity_orientation.html",
+                  {'id_string': id_string, 'xform_id': xform_id,
+                   'form_uuid': form_uuid, 'username': username , 'select_data' : select_data,
+              })
+
+
+
+@csrf_exempt
+def get_upazilas(request):
+    upazila_data = []
+    reqBody = json.loads(request.body)
+    district = reqBody.get('serach_key')
+    if district is not None:
+        upazila_query = "select id, field_name , geocode  from geo_data where field_type_id = 88 and field_parent_id =  any(  select id from geo_data where geocode = '"+ str(district)+"')"
+        upazila_data = json.dumps(__db_fetch_values_dict(upazila_query))
+    return HttpResponse(upazila_data)
+
+
+@csrf_exempt
+def get_unions(request):
+    union_data = []
+    reqBody = json.loads(request.body)
+    upazila = reqBody.get('serach_key')
+    if upazila is not None:
+        union_query = "select id,field_name , geocode from geo_data where field_type_id = 89 and field_parent_id =  any(  select id from geo_data where geocode = '"+ str(upazila)+"')"
+        union_data = json.dumps(__db_fetch_values_dict(union_query))
+    return HttpResponse(union_data)
+
+
+@csrf_exempt
+def submitXMLData(request):
+    jsondata = json.loads(request.body)
+    xml_data = jsondata.get("xml_submission_file")
+    tree = ET.XML(xml_data)
+
+    file_path = "onadata/media/" + request.user.username + "/xml/"
+    directory = os.path.dirname(file_path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open("onadata/media/" + request.user.username + "/xml/submit_data.xml", "w+") as f:
+        f.write(ET.tostring(tree))
+
+    files = {'xml_submission_file': open(str(f.name), 'rb')}
+    requests.post('http://' + request.META.get('HTTP_HOST') + '/' + request.user.username + '/submission', files=files)
+    return HttpResponse("success!")
