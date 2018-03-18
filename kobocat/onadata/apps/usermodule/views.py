@@ -10,6 +10,8 @@ from django.contrib.auth.models import User
 from datetime import date, timedelta, datetime
 # from django.utils import simplejson
 import json
+import thread
+import threading
 import logging
 import sys
 from django.core.urlresolvers import reverse
@@ -866,7 +868,12 @@ def roles_index(request):
         all_roles = OrganizationRole.objects.all().order_by("organization")
     else:
         user = get_object_or_404(UserModuleProfile, user=request.user)
-        all_roles = OrganizationRole.objects.filter(organization = user.organisation_name)
+        current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+        if current_user:
+            current_user = current_user[0]
+        all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+        org_id_list = [org.pk for org in all_organizations]
+        all_roles = OrganizationRole.objects.filter(organization__in=org_id_list)
     return render_to_response(
             'usermodule/roles_list.html',
             {'all_roles':all_roles},
@@ -1184,8 +1191,7 @@ def sent_datalist(request,username):
 ######################### Catchment Area ########################
 #################################################################
 #################################################################
-import thread
-import threading
+
 
 @login_required
 def add_children(request):
@@ -1255,6 +1261,15 @@ def catchment_tree_test(request,user_id):
     position = df.position.tolist()[0]
     username = df.username.tolist()[0]
     email = df.email.tolist()[0]
+    query = "with recursive t as( select id,field_name,field_parent_id from geo_data where id in (select geoid from public.usermodule_catchment_area where user_id = " + str(
+        user_id) + ") union all select geo_data.id,geo_data.field_name,geo_data.field_parent_id from geo_data,t where t.field_parent_id = geo_data.id) select distinct id,field_name,field_parent_id from t order by id"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    parent_list = df.id.tolist()
+    query = "select node_name from geo_definition"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    geo_def_list = df.node_name.tolist()
     return render(request, "usermodule/catchment_tree_test.html", {'datasource': datasource
         , 'organization': organization
         , 'employee_id': employee_id
@@ -1263,7 +1278,76 @@ def catchment_tree_test(request,user_id):
         , 'username': username
         , 'email': email
         , 'user_id': user_id
-        , 'check_nodes': check_nodes,'json_content': json_content_dictionary})
+        , 'check_nodes': check_nodes,'json_content': json_content_dictionary,'parent_list':parent_list,'geo_def_list':json.dumps(geo_def_list)})
+
+
+def check_for_delete(request):
+    id = request.POST.get('id')
+    # Dependency Check
+    # First if it exists in usermodule_catchment_area
+    query_user = "select (select username from auth_user where id = user_id) from public.usermodule_catchment_area where geoid =" + str(id)
+    df_user = pandas.DataFrame()
+    df_user = pandas.read_sql(query_user, connection)
+
+    # if it exists in organization_catchment_area
+    query_org = "select (select organization from usermodule_organizations where id = org_id) from public.organization_catchment_area where geoid =" + str(id)
+    df_org = pandas.DataFrame()
+    df_org = pandas.read_sql(query_org, connection)
+
+    # if it has any children
+    query_child = "select * from public.geo_data where field_parent_id =" + str(id)
+    df_child = pandas.DataFrame()
+    df_child = pandas.read_sql(query_child, connection)
+
+    extra_info= ""
+    if df_user.empty and df_org.empty and df_child.empty and parent_dependency_check_user(id) and parent_dependency_check_org(id):
+        dependency = 0
+    elif not df_user.empty:
+        extra_info =df_user.username.tolist()[0]
+        dependency = 1
+    elif not df_org.empty:
+        extra_info = df_org.organization.tolist()[0]
+        dependency = 2
+    else:
+        dependency = 3
+
+    return HttpResponse(json.dumps({'dependency':dependency,'extra_info':extra_info}))
+
+def parent_dependency_check_user(geoid):
+    query = "with recursive t as( select id,field_name,field_parent_id from geo_data where id =  " + str(geoid) + " union all select geo_data.id,geo_data.field_name,geo_data.field_parent_id from geo_data,t where t.field_parent_id = geo_data.id) select id,field_name,field_parent_id from t order by id"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    parent_list = df.id.tolist()
+
+    query = "select distinct geoid from usermodule_catchment_area"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    geo_list = df.geoid.tolist()
+
+    for each in parent_list:
+        if each in geo_list:
+            print("User" + str(each))
+            return False
+    return True
+
+
+def parent_dependency_check_org(geoid):
+    query = "with recursive t as( select id,field_name,field_parent_id from geo_data where id =  " + str(
+        geoid) + " union all select geo_data.id,geo_data.field_name,geo_data.field_parent_id from geo_data,t where t.field_parent_id = geo_data.id) select id,field_name,field_parent_id from t order by id"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    parent_list = df.id.tolist()
+
+    query = "select distinct geoid from organization_catchment_area"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    geo_list = df.geoid.tolist()
+
+    for each in parent_list:
+        if each in geo_list:
+            print("ORG" + str(each))
+            return False
+    return True
 
 
 @login_required
@@ -1415,7 +1499,16 @@ def form(request):
     node_id = check.id.tolist()
     node = json.dumps({"node_val": node_val, "node_id": node_id})
     list = zip(node_id, node_val)
-    return render(request, 'usermodule/form.html', {'node': list})
+    division_geocode_query = "select geocode from geo_data where field_parent_id  is null"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(division_geocode_query, connection)
+    division_geocode = df.geocode.tolist()
+
+    division_type_id_query = "select id from geo_definition where node_parent  is null"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(division_type_id_query, connection)
+    division_id = df.id.tolist()[0]
+    return render(request, 'usermodule/form.html', {'node': list, 'division_geocode': json.dumps(division_geocode),'division_id':division_id})
 
 
 @login_required
@@ -1442,12 +1535,13 @@ def filtering(request):
             request.POST.get('field_type_id')) + " and field_parent_id = " + str(
             request.POST.get('field_parent_id')) + ""
         df = pandas.read_sql(field_name_query, connection)
+        geocode = df.geocode.tolist()
         field_name = df.field_name.tolist()
         field_id = df.id.tolist()
         field_type_query = "select * from geo_definition where id=" + str(request.POST.get('field_type_id')) + ""
         df = pandas.read_sql(field_type_query, connection)
         field_type = df.node_name.tolist()
-    field_name = json.dumps({'field_name': field_name, 'field_id': field_id, 'field_type': field_type})
+    field_name = json.dumps({'field_name': field_name, 'field_id': field_id, 'field_type': field_type,'geocode':geocode})
     return HttpResponse(field_name)
 
 
@@ -1498,6 +1592,26 @@ def dictfetchall(cursor):
         for row in cursor.fetchall()]
 
 
+def __db_fetch_values(query):
+    """
+        Fetch database result set as list of tuples
+
+        Args:
+            query (str): raw query string
+
+        Returns:
+            str: Returns database result set as list of tuples
+    """
+    cursor = connection.cursor()
+    cursor.execute(query)
+    fetch_val = cursor.fetchall()
+    cursor.close()
+    data_list = []
+    for each_val in fetch_val:
+        data_list.append(list(each_val))
+    return data_list
+
+
 @login_required
 def geo_def_list(request):
     geo_def_query = "with t as (select * from geo_definition) select t.id ,t.node_name , (select node_name from geo_definition where id = t.node_parent) as node_parent_name from t"
@@ -1509,10 +1623,11 @@ def geo_def_list(request):
 
 @login_required
 def geo_list(request):
-    query = "select id,field_name,geocode,(select node_name from geo_definition where id = field_type_id) as field_type from geo_data"
-    geo_def_data = json.dumps(__db_fetch_values_dict(query))
-    return render(request, 'usermodule/geo_list.html', {
-        'geo_def_data': geo_def_data
+    query = "select id,field_name,(select node_name from geo_definition where id = field_type_id) as field_type,geocode from geo_data"
+    # geo_def_data = json.dumps(__db_fetch_values_dict(query))
+    geo_def_data = __db_fetch_values(query)
+    return render(request,'usermodule/geo_list.html',{
+      'geo_def_data':geo_def_data
     })
 
 
@@ -1590,7 +1705,8 @@ def edit_form(request,form_id):
     node_id = check.id.tolist()
     node = json.dumps({"node_val": node_val, "node_id": node_id})
     list = zip(node_id, node_val)
-    query_specific = "select field_name,field_parent_id,field_type_id,(select node_name from geo_definition where id = field_type_id ) as field_type,geocode,uploaded_file_path from geo_data where id ="+str(form_id)+""
+    query_specific = "select field_name,field_parent_id,field_type_id,(select node_name from geo_definition where id = field_type_id ) as field_type,geocode,uploaded_file_path from geo_data where id =" + str(
+        form_id) + ""
     check = pandas.read_sql(query_specific, connection)
     field_parent_id = check.field_parent_id.tolist()[0]
     field_name = check.field_name.tolist()[0]
@@ -1602,17 +1718,51 @@ def edit_form(request,form_id):
     list_of_name_of_parents = []
     if field_parent_id is not None:
         calculate_parents(list_of_id_of_parents, list_of_name_of_parents, field_parent_id)
-    list_of_both = json.dumps({'list_of_id_of_parents': list_of_id_of_parents, 'list_of_name_of_parents': list_of_name_of_parents})
-    print(list_of_both)
+    list_of_both = json.dumps(
+        {'list_of_id_of_parents': list_of_id_of_parents, 'list_of_name_of_parents': list_of_name_of_parents})
+
+    if field_parent_id is not None:
+        field_name_query = "select geocode from geo_data where field_type_id = " + str(
+            field_type_id) + " and field_parent_id = " + str(field_parent_id) + ""
+    else:
+        field_name_query = "select geocode from geo_data where field_type_id = " + str(
+            field_type_id) + " and field_parent_id  is null"
+    df = pandas.read_sql(field_name_query, connection)
+    all_geocode = df.geocode.tolist()
+
+    # Dependency Check
+    # First if it exists in usermodule_catchment_area
+    query_user = "select * from public.usermodule_catchment_area where geoid =" + str(form_id)
+    df_user = pandas.DataFrame()
+    df_user = pandas.read_sql(query_user, connection)
+
+    # if it exists in organization_catchment_area
+    query_org = "select * from public.organization_catchment_area where geoid =" + str(form_id)
+    df_org = pandas.DataFrame()
+    df_org = pandas.read_sql(query_org, connection)
+
+    # if it has any children
+    query_child = "select * from public.geo_data where field_parent_id =" + str(form_id)
+    df_child = pandas.DataFrame()
+    df_child = pandas.read_sql(query_child, connection)
+
+    if df_user.empty and df_org.empty and df_child.empty and parent_dependency_check_user(form_id) and parent_dependency_check_org(form_id):
+        dependency = 0
+    else:
+        dependency = 1
+
     return render(request, 'usermodule/edit_form.html', {'node': list,
-                                                         'form_id':form_id,
-                                                    'field_name':field_name,
-                                                    'field_type':field_type,
-                                                    'geocode': geocode,
-                                                    'uploaded_file_path':uploaded_file_path,
-                                                    'field_type_id':field_type_id,
-                                                    'list_of_both':list_of_both
-                                                    })
+                                                         'form_id': form_id,
+                                                         'field_parent_id': field_parent_id,
+                                                         'field_name': field_name,
+                                                         'field_type': field_type,
+                                                         'geocode': geocode,
+                                                         'uploaded_file_path': uploaded_file_path,
+                                                         'field_type_id': field_type_id,
+                                                         'list_of_both': list_of_both,
+                                                         'dependency': dependency,
+                                                         'all_geocode': json.dumps(all_geocode)
+                                                         })
 
 
 
@@ -1632,42 +1782,57 @@ def calculate_parents(list_of_id_of_parents,list_of_name_of_parents, field_paren
 @login_required
 def update_form(request):
     if request.POST:
-        if len(request.FILES) != 0:
+        if request.FILES:
             myfile = request.FILES['geojsonfile']
             url = "onadata/media/uploaded_files/"
-            userName = request.user
+            userName = request.user  # "Jubair"
             fs = FileSystemStorage(location=url)
-            myfile.name = str(datetime.now()) + "_" + str(userName) + "_" + str(myfile.name)
+            myfile.name = str(datetime.datetime.now()) + "_" + str(userName) + "_" + str(myfile.name)
             filename = fs.save(myfile.name, myfile)
             full_file_path = "onadata/media/uploaded_files/" + myfile.name
+            file = open(full_file_path, 'r')
+            json_content = file.read()
+            file.close()
         else:
-            query  = "select * from geo_data where id = "+str(request.POST.get("form_id"))+""
-            df = pandas.DataFrame();
+            query = "select geojson,uploaded_file_path from geo_data where id = " + str(request.POST.get("form_id"))
+            df = pandas.DataFrame()
             df = pandas.read_sql(query, connection)
-            full_file_path = df.uploaded_file_path.tolist()[0]
+            if df.empty:
+                json_content = '{}'
+                full_file_path = 'cd'
+            else:
+                json_content = json.dumps(df.geojson.tolist()[0])
+                full_file_path = df.uploaded_file_path.tolist()[0]
+        print("*****************Update FORM **********")
         parent = int(request.POST.get("parent_id"))
-        file = open(full_file_path, 'r')
-        json_content = file.read()
-        file.close()
-        query = "delete from geo_data where id = " + str(request.POST.get("form_id")) + ""
-        database(query)
         if parent != -1:
-            query = "INSERT INTO geo_data(id,field_name, field_parent_id,field_type_id,geocode,geojson,uploaded_file_path) VALUES("+str(request.POST.get("form_id"))+",'" + str(
-                request.POST.get('field_name')) + "'," + str(
-                request.POST.get('field_parent_' + str(parent) + '')) + "," + str(
-                request.POST.get('field_type')) + ",'" + str(request.POST.get('geocode')) + "','" + str(
-                json_content) + "','" + str(full_file_path) + "')"
+            query = "UPDATE public.geo_data SET field_name='"+ str(request.POST.get('field_name'))+"', field_parent_id="+str(request.POST.get('field_parent_' + str(parent) + '')) +", field_type_id="+ str(request.POST.get('field_type'))+", geocode='"+ str(request.POST.get('geocode'))+"', geojson='"+ str(json_content)+"', uploaded_file_path='"+str(full_file_path)+"' WHERE id="+str(request.POST.get("form_id"))
         else:
-            query = "INSERT INTO geo_data(id,field_name, field_type_id,geocode,geojson,uploaded_file_path) VALUES("+str(request.POST.get("form_id"))+",'" + str(
-                request.POST.get('field_name')) + "'," + str(request.POST.get('field_type')) + "," + str(
-                request.POST.get('geocode')) + ",'" + str(json_content) + "','" + str(full_file_path) + "')"
+            query = "UPDATE public.geo_data SET field_name='"+ str(request.POST.get('field_name'))+"', field_type_id="+ str(request.POST.get('field_type'))+", geocode='"+ str(request.POST.get('geocode'))+"', geojson='"+ str(json_content)+"', uploaded_file_path='"+str(full_file_path)+"' WHERE id="+str(request.POST.get("form_id"))+""
         database(query)
     return HttpResponseRedirect("/usermodule/geo_list/")
 
 
 @login_required
 def delete_form(request,form_id):
-    delete_child(int(form_id))
+    # Dependency Check
+    # First if it exists in usermodule_catchment_area
+    query_user = "select * from public.usermodule_catchment_area where geoid =" + str(form_id)
+    df_user = pandas.DataFrame()
+    df_user = pandas.read_sql(query_user, connection)
+
+    # if it exists in organization_catchment_area
+    query_org = "select * from public.organization_catchment_area where geoid =" + str(form_id)
+    df_org = pandas.DataFrame()
+    df_org = pandas.read_sql(query_org, connection)
+
+    # if it has any children
+    query_child = "select * from public.geo_data where field_parent_id =" + str(form_id)
+    df_child = pandas.DataFrame()
+    df_child = pandas.read_sql(query_child, connection)
+
+    if df_user.empty and df_org.empty and df_child.empty:
+        delete_child(int(form_id))
     return HttpResponseRedirect("/usermodule/geo_list/")
 
 
@@ -1698,7 +1863,7 @@ def json_data_fetch(request):
     json_content_dictionary = []
     for each in list_of_selected_node:
         if each:
-            query_for_json = "select * from geo_data where id = " + str(each) + ""
+            query_for_json = "select uploaded_file_path from geo_data where id = " + str(each) + ""
             df = pandas.DataFrame()
             df = pandas.read_sql(query_for_json, connection)
             uploaded_file_path = df.uploaded_file_path.tolist()[0]
@@ -1709,6 +1874,8 @@ def json_data_fetch(request):
             else:
                 json_content = "{}"
             json_content_dictionary.append(json_content)
+        # json_content = json.loads(json_content)
+    # print(json_content_dictionary)
     return  HttpResponse(json.dumps({'json_content': json_content_dictionary}))
 
 

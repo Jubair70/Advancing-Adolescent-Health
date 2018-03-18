@@ -30,11 +30,24 @@
                     <th>Field Name</th>
                     <th>Field Type</th>
                     <th>Geo Code</th>
-                    <!-- <th class="td-center">Action</th> -->
+                    <th class="td-center">Action</th>
                 </tr>
                 </thead>
                 <tbody>
-
+                 {% for each in geo_def_data %}
+                        <tr>
+                        <td>{{ each.1 }}</td>
+                        <td>{{ each.2 }}</td>
+                        <td>{{ each.3 }}</td>
+                       <td class="td-center">
+                    <a class="tooltips" data-placement="top" data-original-title="Edit"
+                       href="/usermodule/edit_form/{{ each.0 }}"><i
+                            class="fa fa-2x fa-pencil-square-o"></i></a>
+                    <a class="delete-item tooltips .delete-item"  onclick="load({{ each.0}})" data-placement="top" data-original-title="Delete"  href="#" data-href="/usermodule/delete_form/{{ each.0}}" data-toggle="modal"
+                       data-target="#confirm-delete"><i class="fa fa-2x fa-trash-o"></i></a>
+                        </td>
+                        </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -45,22 +58,12 @@
          aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
                     <h4 class="modal-title" id="myModalLabel">Confirm Delete</h4>
                 </div>
-
-                <div class="modal-body">
-                    <p>You are about to delete a node structure, this procedure is irreversible.</p>
-                    <p>Do you want to proceed?</p>
-                    <p class="debug-url"></p>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                    <a href="#" class="btn btn-danger btn-ok">Delete</a>
-                </div>
+                <div class="modal-body"></div>
+                <div class="modal-footer"></div>
             </div>
         </div>
     </div>
@@ -82,23 +85,19 @@
     <script>
 
     $(document).ready(function () {
-            var tbody = '';
-        var geo_def_data = {{ geo_def_data|safe }};
-
-        for (var idx in geo_def_data) {
-            tbody += '<tr><td>' + geo_def_data[idx].field_name + '</td><td>' + geo_def_data[idx].field_type + '</td><td>' + geo_def_data[idx].geocode + '</td></tr>';
-           /* <td class="td-center"><a class="tooltips" data-placement="top" data-original-title="Edit" href="/usermodule/edit_form/' + geo_def_data[idx].id + '"><i class="fa fa-2x fa-pencil-square-o"></i></a><a class="delete-item tooltips" data-placement="top" data-toggle="modal" data-target="#confirm-delete" data-original-title="Delete" href="#" data-href="/usermodule/delete_form/' + geo_def_data[idx].id + '"><i class="fa fa-2x fa-trash-o"></i></a></td>*/
-            
-        }
-
-        $("#geo_def_table").find('tbody').html(tbody);
+{#        var tbody = '';#}
+{#        var geo_def_data = {{ geo_def_data|safe }};#}
+{##}
+{#        for (var idx in geo_def_data) {#}
+{#            tbody += '<tr><td>' + geo_def_data[idx].field_name + '</td><td>' + geo_def_data[idx].field_type + '</td><td>' + geo_def_data[idx].geocode + '</td></tr>';#}
+{#           /* <td class="td-center"><a class="tooltips" data-placement="top" data-original-title="Edit" href="/usermodule/edit_form/' + geo_def_data[idx].id + '"><i class="fa fa-2x fa-pencil-square-o"></i></a><a class="delete-item tooltips" data-placement="top" data-toggle="modal" data-target="#confirm-delete" data-original-title="Delete" href="#" data-href="/usermodule/delete_form/' + geo_def_data[idx].id + '"><i class="fa fa-2x fa-trash-o"></i></a></td>*/#}
+{#            #}
+{#        }#}
+{#        $("#geo_def_table").find('tbody').html(tbody);#}
         var table = $('#geo_def_table').DataTable({
                 "scrollX": true, "ordering": true
             });
-        $('.delete-item').on('click', function (e) {
-            var criteria_id = $(this).attr("data-href");
-            $('.btn-ok').attr("href", criteria_id);
-        });
+
         if ($('.alert-block').is(':visible')) {
             window.setTimeout(function () {
                 $(".alert-success").fadeTo(1500, 0).slideUp(500, function () {
@@ -109,6 +108,46 @@
 
     });
 
+
+
+     function load(id) {
+            $.ajax({
+                url: '/usermodule/check_for_delete/',
+                type: 'POST',
+                dataType: 'json',
+                data: {'id': id},
+                success: function (result) {
+                   if(result.dependency ==0 )
+                   {
+
+                       html_code="<p>You are about to delete a node structure, this procedure is irreversible.</p>\n" +
+                           "                    <p>Do you want to proceed?</p>\n" +
+                           "                    <p class=\"debug-url\"></p>";
+                       $('.modal-footer').html('<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button><a href="/usermodule/delete_form/'+id+'" class="btn btn-danger btn-ok">Delete</a>');
+
+
+
+                   }
+                   else if(result.dependency ==1 )
+                   {
+                       html_code="<p>Geo data already assigned to "+result.extra_info+". Cannot be deleted.</p>\n";
+                       $('.modal-footer').html('<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>');
+
+
+                   }
+                   else  if(result.dependency ==2)
+                   {
+                        html_code="<p>Geo data already exists in "+result.extra_info+". Cannot be deleted.</p>";
+                        $('.modal-footer').html('<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>');
+                   }
+                   else {
+                        html_code = "<p>There is one or more location added under this. Please delete those first, then try again.</p>"
+                       $('.modal-footer').html('<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>');
+                   }
+                   $('.modal-body').html(html_code);
+                }
+            });
+        }
         
 
 

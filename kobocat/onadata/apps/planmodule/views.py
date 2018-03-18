@@ -257,7 +257,7 @@ def getUpazilas(request):
 
 def getUnions(request):
     upazila = request.POST.get('upz')
-    union_query = "select id,field_name from geo_data where field_type_id = 89 and field_parent_id = " + str(upazila)
+    union_query = "select geocode as id,field_name from geo_data where field_type_id = 89 and field_parent_id = (select id from geo_data where geocode = '"+str(upazila)+"')"
     union_data = json.dumps(__db_fetch_values_dict(union_query))
     return HttpResponse(union_data)
 
@@ -481,6 +481,255 @@ def getScoreCardData(request):
     query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return HttpResponse(scorecard_list)
+
+
+@login_required
+def csa_report(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+    query = "with csa_reg as( select json->>'info/id_adolescent'id_adolescent,json->>'info/adolescent_name' adolescent_name,json->>'info/upazila' upazilla_id,json->>'info/union_name' union_id,json->>'business_start_month' business_start_month,(select id from public.usermodule_organizations where organization=(json->>'info/pngo'))pngo_id,json->>'info/pngo' pngo_name from public.logger_instance where xform_id = 555 and deleted_at is null) ,csa_reg_follow as ( select json->>'info/id_adolescent'id_adolescent,json->>'month' current_month,json->>'commodity_price' commodity_price,json->>'commodity_amount' commodity_amount,json->>'profit' profit,json->>'remarks' remarks from public.logger_instance where xform_id = 554 and deleted_at is null ) select csa_reg.*,current_month,commodity_price,commodity_amount,remarks,profit from csa_reg,csa_reg_follow where csa_reg.id_adolescent = csa_reg_follow.id_adolescent and pngo_id in " + str(org)
+    csa_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+
+    query_pngo = "select id,organization from public.usermodule_organizations where id in "+str(org)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_pngo,connection)
+    org_id = df.id.tolist()
+    org_name = df.organization.tolist()
+    organization = zip(org_id,org_name)
+
+    query = "select geocode,field_name from geo_data where field_type_id = 88 "
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    upz_id = df.geocode.tolist()
+    upz_name = df.field_name.tolist()
+    upazila = zip(upz_id, upz_name)
+
+    query = "select geocode,field_name from geo_data where field_type_id = 89"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    union_id = df.geocode.tolist()
+    union_name = df.field_name.tolist()
+    union = zip(union_id, union_name)
+
+    return render(request, 'planmodule/csa_report.html', {
+        'csa_list': csa_list,'organization':organization,'upazila':upazila,'union':union
+    })
+
+
+@login_required
+def getCSAData(request):
+    from_date = request.POST.get('from_date')
+    to_date = request.POST.get('to_date')
+    upazila = request.POST.get('upazila')
+    union = request.POST.get('union')
+    pngo = request.POST.get('pngo')
+
+    filter_query = "and  current_month between '" + str(from_date) + "' and '" + str(to_date) + "'"
+    if upazila !="":
+        filter_query += " and upazilla_id::int = "+str(upazila)
+    if pngo !="":
+        filter_query += " and pngo_id::int = "+str(pngo)
+    if union!="":
+        filter_query += " and union_id::int = " + str(union)
+    query = "with csa_reg as( select json->>'info/id_adolescent'id_adolescent,json->>'info/adolescent_name' adolescent_name,json->>'info/upazila' upazilla_id,json->>'info/union_name' union_id,json->>'business_start_month' business_start_month,(select id from public.usermodule_organizations where organization=(json->>'info/pngo'))pngo_id,json->>'info/pngo' pngo_name from public.logger_instance where xform_id = 555 and deleted_at is null) ,csa_reg_follow as ( select json->>'info/id_adolescent'id_adolescent,json->>'month' current_month,json->>'commodity_price' commodity_price,json->>'commodity_amount' commodity_amount,json->>'profit' profit,json->>'remarks' remarks from public.logger_instance where xform_id = 554 and deleted_at is null ) select csa_reg.*,current_month,commodity_price,commodity_amount,profit,remarks from csa_reg,csa_reg_follow where csa_reg.id_adolescent = csa_reg_follow.id_adolescent "+str(filter_query)
+    csa_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    return HttpResponse(csa_list)
+
+
+@login_required
+def test_report(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+    query = "with t as( SELECT username, village_geocode, village_name, union_geocode, union_name, upazilla_geocode, upazilla_name, district_geocode, district_name, group_type, maritial_status, submission_date, test_type, group_id, adolescent_name, id_adolescent, number_obtained,case when number_obtained::int <=5 then 1 else 0 end poor,case when number_obtained::int >=6 and number_obtained::int <=9 then 1 else 0 end good,case when number_obtained::int >=10 then 1 else 0 end excellent FROM public.vw_life_skill_education_test where pngo_id in "+str(org)+")select group_id,case when test_type='1' then 'Pre' else 'Post' end test_type,submission_date,count(adolescent_name) enrolled,sum(poor) poor,sum(good) good,sum(excellent) excellent from t group by submission_date,poor,test_type,group_id"
+    test_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+
+    query_pngo = "select id,organization from public.usermodule_organizations where id in "+str(org)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_pngo,connection)
+    org_id = df.id.tolist()
+    org_name = df.organization.tolist()
+    organization = zip(org_id,org_name)
+
+    query = "select geocode,field_name from geo_data where field_type_id = 88"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    upz_id = df.geocode.tolist()
+    upz_name = df.field_name.tolist()
+    upazila = zip(upz_id, upz_name)
+
+    query = "select geocode,field_name from geo_data where field_type_id = 89"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    union_id = df.geocode.tolist()
+    union_name = df.field_name.tolist()
+    union = zip(union_id, union_name)
+
+    query = "select id,username from auth_user where id in (select user_id from usermodule_catchment_area where geoid in (select id from geo_data where field_type_id = 89))"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    user_id = df.id.tolist()
+    user_name = df.username.tolist()
+    user = zip(user_id, user_name)
+
+    query_for_chart = "with t as( SELECT username, village_geocode, village_name, union_geocode, union_name, upazilla_geocode, upazilla_name, district_geocode, district_name, group_type, maritial_status, submission_date, test_type, group_id, adolescent_name, id_adolescent, number_obtained,case when number_obtained::int <=5 then 1 else 0 end poor,case when number_obtained::int >=6 and number_obtained::int <=9 then 1 else 0 end good,case when number_obtained::int >=10 then 1 else 0 end excellent FROM public.vw_life_skill_education_test)select test_type,sum(poor) poor,sum(good) good,sum(excellent) excellent from t group by test_type order by test_type"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_chart, connection)
+    pretest = []
+    posttest = []
+    if not df.empty:
+        if df.test_type.tolist()[0] == '1':
+            pretest.append(df.poor.tolist()[0])
+            pretest.append(df.good.tolist()[0])
+            pretest.append(df.excellent.tolist()[0])
+        if df.test_type.tolist()[0] == '2':
+            posttest.append(df.poor.tolist()[0])
+            posttest.append(df.good.tolist()[0])
+            posttest.append(df.excellent.tolist()[0])
+        if len(df.test_type.tolist()) > 1 and df.test_type.tolist()[1] == '2':
+            posttest.append(df.poor.tolist()[1])
+            posttest.append(df.good.tolist()[1])
+            posttest.append(df.excellent.tolist()[1])
+    return render(request, 'planmodule/test_report.html', {
+        'test_list': test_list,'organization':organization,'upazila':upazila,'union':union,'user':user,'posttest':posttest,'pretest':pretest
+    })
+
+
+@login_required
+def getTestData(request):
+    from_date = request.POST.get('from_date')
+    to_date = request.POST.get('to_date')
+    upazila = request.POST.get('upazila')
+    union = request.POST.get('union')
+    pngo = request.POST.get('pngo')
+    username = request.POST.get('username')
+    group = request.POST.get('group')
+    test_type = request.POST.get('test_type')
+    marital_status = request.POST.get('marital_status')
+    session = request.POST.get('session')
+
+    filter_query = "where  submission_date between '" + str(from_date) + "' and '" + str(to_date) + "'"
+    if len(group)!=0:
+        if len(group) == 1:
+            filter_query += " and group_type::int = " + str(group)
+        elif len(group) == 2:
+            group = "("+group[0]+","+group[1]+")"
+            filter_query += " and group_type::int in " + str(group)
+
+    if upazila !="":
+        filter_query += " and upazilla_geocode::int = "+str(upazila)
+    if pngo !="":
+        filter_query += " and username in (select username from auth_user where id in(select user_id from usermodule_usermoduleprofile where organisation_name_id = "+str(pngo)+"))"
+    if union!="":
+        filter_query += " and union_geocode::int = " + str(union)
+    if username!="":
+        filter_query += " and username = (select username from auth_user where id ="+ str(username)+")"
+
+    if test_type!="":
+        filter_query += " and test_type::int = " + str(test_type)
+    if marital_status!="":
+        filter_query += " and maritial_status::int = " + str(marital_status)
+    session_query = ""
+    if session!="":
+        session_query += " having count(*) = " + str(session)
+
+    query = "with t as( SELECT username,(select id user_id from auth_user where username=vw_life_skill_education_test.username), village_geocode, village_name, union_geocode, union_name, upazilla_geocode, upazilla_name, district_geocode, district_name, group_type, maritial_status, submission_date, test_type, group_id, adolescent_name, id_adolescent, number_obtained,case when number_obtained::int <=5 then 1 else 0 end poor,case when number_obtained::int >=6 and number_obtained::int <=9 then 1 else 0 end good,case when number_obtained::int >=10 then 1 else 0 end excellent FROM public.vw_life_skill_education_test "+str(filter_query)+"), t1 as( select group_id,count(*) sessions from vw_grp_reg_sessions  group by group_id "+str(session_query)+")select group_id,case when test_type='1' then 'Pre' else 'Post' end test_type,submission_date,count(adolescent_name) enrolled,sum(poor) poor,sum(good) good,sum(excellent) excellent from t where group_id in (select group_id from t1) group by submission_date,poor,test_type,group_id"
+    test_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+
+    query_for_chart = "with t as( SELECT username, village_geocode, village_name, union_geocode, union_name, upazilla_geocode, upazilla_name, district_geocode, district_name, group_type, maritial_status, submission_date, test_type, group_id, adolescent_name, id_adolescent, number_obtained,case when number_obtained::int <=5 then 1 else 0 end poor,case when number_obtained::int >=6 and number_obtained::int <=9 then 1 else 0 end good,case when number_obtained::int >=10 then 1 else 0 end excellent FROM public.vw_life_skill_education_test "+str(filter_query)+"), t1 as( select group_id,count(*) sessions from vw_grp_reg_sessions  group by group_id "+str(session_query)+")select test_type,sum(poor) poor,sum(good) good,sum(excellent) excellent from t where group_id in (select group_id from t1) group by test_type order by test_type"
+    print(query_for_chart)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_chart, connection)
+    pretest = []
+    posttest = []
+    if not df.empty:
+        if df.test_type.tolist()[0]=='1':
+            pretest.append(df.poor.tolist()[0])
+            pretest.append(df.good.tolist()[0])
+            pretest.append(df.excellent.tolist()[0])
+        if df.test_type.tolist()[0] == '2':
+            posttest.append(df.poor.tolist()[0])
+            posttest.append(df.good.tolist()[0])
+            posttest.append(df.excellent.tolist()[0])
+        if  len(df.test_type.tolist())>1 and df.test_type.tolist()[1] == '2':
+            posttest.append(df.poor.tolist()[1])
+            posttest.append(df.good.tolist()[1])
+            posttest.append(df.excellent.tolist()[1])
+    return HttpResponse(json.dumps({'test_list':test_list,'posttest':posttest,'pretest':pretest}))
+
+
+@login_required
+def economic_empowerment_report(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+    query = "with t as( select * from plan_mis_report_district_form where pngo_id in "+str(org)+")select 'Number of adolescents girls trained' as cat_name,coalesce(sum(female_girls_unmarried)+sum(female_girls_married),0) summation from t where activity_id = '164' union all select 'Number of adolescents supported to find employment',coalesce(sum(male_boys_unmarried)+sum(male_boys_married)+sum(female_girls_unmarried)+sum(female_girls_married),0) from t where activity_id = '265' union all select 'Number of adolescents supported for enterprise development',coalesce(sum(male_boys_unmarried)+sum(male_boys_married)+sum(female_girls_unmarried)+sum(female_girls_married),0) from t where activity_id = '366' union all select 'Number of adolescents supported for IT and telemedicine work',coalesce(sum(male_boys_unmarried)+sum(male_boys_married)+sum(female_girls_unmarried)+sum(female_girls_married),0) from t where activity_id = '467'"
+    economic_empowerment_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    chartvalue = df.summation.tolist()
+
+
+    query = "select * from usermodule_catchment_area where user_id = "+str(request.user.id)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    if df.empty:
+        query = "select id,field_name from geo_data where field_type_id = 88"
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        upz_id = df.id.tolist()
+        upz_name = df.field_name.tolist()
+        upazila = zip(upz_id, upz_name)
+    else:
+        query = "select id,field_name from geo_data where field_type_id = 88 and id="+str(df.geoid.tolist()[0])
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        upz_id = df.id.tolist()
+        upz_name = df.field_name.tolist()
+        upazila = zip(upz_id, upz_name)
+    return render(request, 'planmodule/economic_empowerment_report.html', {
+        'economic_empowerment_list': economic_empowerment_list,'upazila':upazila,'chartvalue':chartvalue
+    })
+
+
+@login_required
+def getEconomicData(request):
+    from_date = request.POST.get('from_date')
+    to_date = request.POST.get('to_date')
+    upazila = request.POST.get('upazila')
+    pngo = request.POST.get('pngo')
+    filter_query = "where  activity_date between '" + str(from_date) + "' and '" + str(to_date) + "'"
+
+    if upazila !="":
+        filter_query += " and upazilla = "+str(upazila)
+    if pngo !="":
+        filter_query += " and pngo_id = "+str(pngo)
+
+    query = "with t as( select * from plan_mis_report_district_form "+str(filter_query)+")select 'Number of adolescents girls trained' as cat_name,coalesce(sum(female_girls_unmarried)+sum(female_girls_married),0) summation from t where activity_id = '164' union all select 'Number of adolescents supported to find employment',coalesce(sum(male_boys_unmarried)+sum(male_boys_married)+sum(female_girls_unmarried)+sum(female_girls_married),0) from t where activity_id = '265' union all select 'Number of adolescents supported for enterprise development',coalesce(sum(male_boys_unmarried)+sum(male_boys_married)+sum(female_girls_unmarried)+sum(female_girls_married),0) from t where activity_id = '366' union all select 'Number of adolescents supported for IT and telemedicine work',coalesce(sum(male_boys_unmarried)+sum(male_boys_married)+sum(female_girls_unmarried)+sum(female_girls_married),0) from t where activity_id = '467'"
+    economic_empowerment_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    chartvalue = df.summation.tolist()
+    return HttpResponse(json.dumps({'economic_empowerment_list':economic_empowerment_list,'chartvalue':chartvalue}))
 
 
 @login_required

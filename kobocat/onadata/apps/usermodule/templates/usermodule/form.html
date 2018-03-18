@@ -47,6 +47,7 @@
                                 <label for="Field Name">Geo Code:</label>
                                 <input type="text" class="form-control" name="geocode" id="geocode"
                                        placeholder="Geo Code" required>
+                                <span style="color:red;font-weight:bold" id ="alert_geocode">Duplicate Geocode Not Accepted</span>
                             </div>
                         </div>
                     </div>
@@ -110,7 +111,8 @@
         list = [];
         j = 0;
         var response, objet;
-
+        var division_id = {{ division_id |safe }};
+        console.log(division_id);
 
         function load1(obj) {
             ajaxcall();
@@ -124,6 +126,8 @@
                     response = result.response_record
                     $("#parent_id").val(result.parent_id);
                     $(".field_parent").html("");
+                    if ($('#field_type option:selected').val() == division_id)
+                        geocode = division_geocode;
                     if (Object.keys(response).length)
                         load(parseInt(Object.keys(response)[0]));
 
@@ -157,6 +161,7 @@
 
 
         function filtering(filter, field_type_id) {
+             ajaxcall();
             var start = field_type_id;
             while (start != objet) {
                 console.log("field_parent_" + start + "");
@@ -166,6 +171,7 @@
             }
             var field_parent_id = Number(filter.value);
             $.ajax({
+                async: false,
                 url: '/usermodule/filtering/', // form action url
                 type: 'POST', // form submit method get/post
                 dataType: 'json', // request type html/json/xml
@@ -179,12 +185,44 @@
                         html_code += "<option value=\"" + result.field_id[i] + "\">" + result.field_name[i] + "</option>";
                     }
                     html_code += "</select>";
+                    geocode = result.geocode;
+                    console.log(geocode);
                     if (field_type_id != objet)
                         $(".field_parent").append(html_code);
 
                 }
             });
+
         }
+
+        var geocode=[];
+        var division_geocode = {{ division_geocode|safe }};
+        geocode = division_geocode
+        console.log(geocode);
+        $('#alert_geocode').hide();
+        $('#geocode').on('keyup',function () {
+           var geo_value = $('#geocode').val();
+           if(geocode.includes(geo_value))
+                $('#alert_geocode').show();
+           else $('#alert_geocode').hide();
+
+        });
+
+        $('#submit').on('click',function () {
+            var geo_value = $('#geocode').val();
+            if(geocode.includes(geo_value))
+            {
+                $('#alert_geocode').show();
+                return false;
+            }
+
+            else {
+                $('#alert_geocode').hide();
+                return true;
+            }
+
+        });
+
 
 
     </script>
