@@ -28,6 +28,7 @@ urlpatterns = patterns('',
                        url(r'^scorecard_report/$', views.scorecard_report, name='scorecard_report'),
                        url(r'^getScoreCardData/$', views.getScoreCardData, name='getScoreCardData'),
 
+
                         url(r'^csa_report/$', views.csa_report, name='csa_report'),
                         url(r'^getCSAData/$', views.getCSAData, name='getCSAData'),
                         url(r'^test_report/$', views.test_report, name='test_report'),
@@ -62,4 +63,6 @@ urlpatterns = patterns('',
                            name='edit_mis_report_district_form'),
                        url(r'^update_mis_report_district_form/$', views.update_mis_report_district_form,
                            name='update_mis_report_district_form'),
+url(r'^community_orientation_list/$', views.community_orientation_list,name='community_orientation_list'),
+url(r'^getCommunityData/$', views.getCommunityData, name='getCommunityData'),
                        )

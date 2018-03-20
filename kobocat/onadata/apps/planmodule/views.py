@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.hashers import make_password
 from django.contrib import messages
@@ -929,6 +931,34 @@ def mis_report_district_list(request):
     return render(request, 'planmodule/mis_report_district_list.html', {
         'mis_report_district_list': mis_report_district_list
     })
+
+
+@login_required
+def community_orientation_list(request):
+    query = "SELECT DISTINCT ON(data_id) data_id, pngo pngo_name, (SELECT field_name FROM geo_data WHERE geocode = upazila) AS upazila_name, (SELECT field_name FROM geo_data WHERE geocode = union_name) AS union_name, date AS orientation_date, CASE orientation_type WHEN '1' THEN 'কমিউনিটি ওরিয়েন্টেশন' WHEN '2' THEN 'ধর্মীয় নেতা'  WHEN '3' THEN  'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' WHEN '4' THEN 'ইস্যুভিত্তিক মিটিং'  END AS orientation_type FROM vw_comm_orientation"
+    community_orientation_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    return render(request, 'planmodule/community_orientation_list.html', {
+        'community_orientation_list': community_orientation_list
+    })
+
+
+@login_required
+def getCommunityData(request):
+    orientation_type = request.POST.get('orientation_type')
+    pngo = request.POST.get('pngo')
+    if orientation_type =="" and pngo=="":
+        filter_query = ""
+    else:
+        filter_query = " where "
+    if orientation_type !="":
+        filter_query += "orientation_type::int = "+str(orientation_type)
+    if pngo !="" and orientation_type !="":
+        filter_query += " and pngo = '"+str(pngo)+"'"
+    elif pngo!="":
+        filter_query += "pngo = '" + str(pngo) + "'"
+    query = "SELECT DISTINCT ON(data_id) data_id, pngo pngo_name, (SELECT field_name FROM geo_data WHERE geocode = upazila) AS upazila_name, (SELECT field_name FROM geo_data WHERE geocode = union_name) AS union_name, date AS orientation_date, CASE orientation_type WHEN '1' THEN 'কমিউনিটি ওরিয়েন্টেশন' WHEN '2' THEN 'ধর্মীয় নেতা'  WHEN '3' THEN  'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' WHEN '4' THEN 'ইস্যুভিত্তিক মিটিং'  END AS orientation_type FROM vw_comm_orientation"+str(filter_query)
+    community_orientation_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    return HttpResponse(community_orientation_list)
 
 
 @login_required
