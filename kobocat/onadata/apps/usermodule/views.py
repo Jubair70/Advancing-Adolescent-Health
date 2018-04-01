@@ -1541,7 +1541,15 @@ def filtering(request):
         field_type_query = "select * from geo_definition where id=" + str(request.POST.get('field_type_id')) + ""
         df = pandas.read_sql(field_type_query, connection)
         field_type = df.node_name.tolist()
-    field_name = json.dumps({'field_name': field_name, 'field_id': field_id, 'field_type': field_type,'geocode':geocode})
+
+        field_parent_geocode = "select geocode from geo_data where id = "+str(request.POST.get('field_parent_id'))
+        df = pandas.DataFrame()
+        df = pandas.read_sql(field_parent_geocode,connection)
+        if not df.empty:
+            parent_geocode = df.geocode.tolist()[0]
+        else:
+            parent_geocode = -1
+    field_name = json.dumps({'field_name': field_name, 'field_id': field_id, 'field_type': field_type,'geocode':geocode,'parent_geocode':parent_geocode})
     return HttpResponse(field_name)
 
 
@@ -1569,7 +1577,7 @@ def tree_construct(id, list):
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     node_parent = df.node_parent.tolist()
-    if node_parent[0] is None:
+    if df.empty or node_parent[0] is None:
         return
     else:
         tree_construct(node_parent[0], list)
