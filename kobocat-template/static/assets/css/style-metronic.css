@@ -61,7 +61,7 @@ Buttons & Dropdown Buttons
 } 
 
 .btn.red-stripe {
-	border-left: 3px solid #d84a38;
+	border-left: 3px solid #4082e2;
 }
 
 .btn.blue-stripe {
@@ -104,7 +104,7 @@ Buttons & Dropdown Buttons
 .btn.red {
   color: white;  
   text-shadow: none;	
-  background-color: #d84a38;
+  background-color: #4082e2;
 }
 .btn.red:hover, 
 .btn.red:focus, 
@@ -112,7 +112,7 @@ Buttons & Dropdown Buttons
 .btn.red.active,
 .btn.red[disabled], 
 .btn.red.disabled {    
-  background-color: #bb2413 !important;
+  background-color: #1755af !important;
   color: #fff !important;
   outline: none !important;
 }

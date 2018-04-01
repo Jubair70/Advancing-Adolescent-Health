@@ -21,6 +21,7 @@ from django.forms.formsets import formset_factory
 from collections import OrderedDict
 from onadata.apps.main.models import UserProfile, MetaData
 from onadata.libs.utils.user_auth import has_permission, has_edit_permission
+from onadata.libs.utils.logger_tools import check_form_permissions
 from django.core.urlresolvers import reverse
 from onadata.apps.logger.views import download_jsonform
 from onadata.apps.viewer.models.export import Export
@@ -344,7 +345,7 @@ def custom_project_window(request, username, id_string,**kwargs):
     """
     owner = get_object_or_404(User, username__iexact=username)
     xform = get_object_or_404(XForm, id_string__exact=id_string, user=owner)
-    if not has_permission(xform, owner, request):
+    if not check_form_permissions(xform, str(request.user), 'can_view'):
         return HttpResponseForbidden(_(u'Not shared.'))
 
     user_list = get_own_and_partner_orgs_usermodule_users(request)

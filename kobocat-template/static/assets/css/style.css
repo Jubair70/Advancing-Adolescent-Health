@@ -14,7 +14,7 @@ Purchase: http://themeforest.net/item/metronic-responsive-admin-dashboard-templa
 Colors
 blue:  #4b8df8
 light blue: #bfd5fa
-red: #e02222
+red: #004cb9
 yellow: #ffb848
 green: #35aa47
 purple: #852b99
@@ -139,8 +139,8 @@ General backgrounds. Can be applied to any block or panel
 
 .bg-red {
   background-image: none !important;
-  background-color: #e02222 !important;
-  border-color: #e02222 !important;
+  background-color: #004cb9 !important;
+  border-color: #004cb9 !important;
   color: #fff !important;
 }
 
@@ -1043,7 +1043,7 @@ Page breadcrumb
   padding: 9px 9px 8px 9px;
   cursor: pointer;
   color: #fff;
-  background-color: #e02222;
+  background-color: #004cb9;
 }
 
 /* hack for chrome and safari */
@@ -1421,7 +1421,7 @@ Portlets
 }
 
 .portlet > .portlet-body.red, .portlet.red {
-  background-color: #e02222 !important;
+  background-color: #004cb9 !important;
 }
 
 .portlet > .portlet-body.yellow, .portlet.yellow {
@@ -1589,7 +1589,7 @@ Box portlet
 }
 
 .portlet.box.red > .portlet-title {
-  background-color: #e02222;
+  background-color: #004cb9;
 } 
 
 .portlet.box.red {  
@@ -3269,7 +3269,7 @@ Horezantal Menu(new in v1.2)
   position: absolute;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 6px solid #e02222;
+  border-top: 6px solid #004cb9;
   display: inline-block;
   margin: 0;
   width: 0px;
@@ -3750,7 +3750,7 @@ textarea.placeholder {
 }
 
 .control-label .required {
-  color: #e02222;
+  color: #004cb9;
   font-size: 12px;
   padding-left: 2px;
 }
