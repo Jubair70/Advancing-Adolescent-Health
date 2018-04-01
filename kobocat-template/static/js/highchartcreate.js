@@ -184,7 +184,7 @@ function createChart(type,container,processed_json,title,yAxis_title_text,xAxis_
                 }
             }
             },
-            colors: ['#e02222'],
+            colors: ['#004cb9'],
             tooltip: {
                 headerFormat: '<span style="font-size:10px">{point.key}: </span><table>',
                 pointFormat: '<b>{point.y}</b>',

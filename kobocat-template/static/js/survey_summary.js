@@ -43,7 +43,7 @@ function createChart(container,processed_json)
                 colorByPoint: true
             },
             series: {
-                legendColor: '#e02222',
+                legendColor: '#004cb9',
                 stacking: 'normal',
                 dataLabels: {
                     enabled: false,
@@ -60,7 +60,7 @@ function createChart(container,processed_json)
                }
 
             },
-            colors: ['#e02222'],
+            colors: ['#004cb9'],
             tooltip: {
                 headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
                 pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +

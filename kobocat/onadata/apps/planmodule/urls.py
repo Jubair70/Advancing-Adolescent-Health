@@ -54,6 +54,7 @@ urlpatterns = patterns('',
                        url(r'^get_geolocation_csv/$', views_api.get_geolocation_csv),
                        url(r'^upload_monthly_target_plan/$', views_api.upload_monthly_target_plan),
                        url(r'^get_marriage_info_list/$', views_api.get_marriage_info_list),
+                       url(r'^get_referrals_list/$', views_api.get_referrals_list),
                        url(r'^commnity_orientation_form/$', views_api.commnity_orientation_form),
 
                        url(r'^mis_report_district_list/$', views.mis_report_district_list,
@@ -75,5 +76,5 @@ urlpatterns = patterns('',
                        url(r'^get_upazilas/$', views_api.get_upazilas, name='get_upazilas'),
                        url(r'^get_unions/$', views_api.get_unions, name='get_unions'),
                        url(r'^submit-xml-data/$', views_api.submitXMLData),
-
+                       url(r'^plan_mis_report/$', views_api.plan_mis_report),
                        )
