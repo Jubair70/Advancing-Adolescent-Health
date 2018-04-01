@@ -1202,7 +1202,6 @@ DataTable.ext.buttons.excelHtml5 = {
 		if ( config.header ) {
 
 			var headerMatrix = _fnGetHeaders(dt);
-			console.log(headerMatrix);
                 for ( var rowIdx = 0;  rowIdx < headerMatrix.length;  rowIdx++ ) {
                     addRow( headerMatrix[rowIdx], rowPos );
                 }
