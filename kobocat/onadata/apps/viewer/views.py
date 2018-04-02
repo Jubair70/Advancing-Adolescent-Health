@@ -760,6 +760,7 @@ def custom_data_view(request, username, id_string):
     cursor = connection.cursor()
 
     if str(request.user.id)==str(owner.id):
+        userlist = ""
         state_list="*"
     else:
         sqry="select distinct current_state from vwrolestatuswiseformpermission where role_id in(select role_id::text from vwusermodule_userrolemap where auth_user_id="+str(request.user.id)+")"
@@ -771,6 +772,7 @@ def custom_data_view(request, username, id_string):
                 state_list="'" + str(eachval[0]) + "'"
             else:
                 state_list=state_list + "," + "'" + str(eachval[0]) + "'"
+        userlist = " AND vwlogger_instance.user_id ="+str(request.user.id)
 
     if state_list!="" and state_list!="*":
         state_list="(" + state_list + ")"
@@ -829,11 +831,14 @@ def custom_data_view(request, username, id_string):
 
     submission_instance_query = "SELECT " + column_query + " FROM vwlogger_instance LEFT JOIN approval_instanceapproval app_inst ON app_inst.instance_id = vwlogger_instance.id WHERE xform_id = " + str(xform.id) + str(sub_query_user) + str(sub_query_date_range) + str(sub_query_status)
 
+    '''
     if state_list=="":
-        submission_instance_query =submission_instance_query + " and app_inst.status =''"
+        submission_instance_query = submission_instance_query + " and app_inst.status =''"
     elif state_list!="*":
-        submission_instance_query =submission_instance_query + " and app_inst.status in" + state_list
+        submission_instance_query = submission_instance_query + " and app_inst.status in" + state_list
+    '''
 
+    submission_instance_query = submission_instance_query + userlist
     print submission_instance_query
     data_list = []
     col_names = []

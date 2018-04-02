@@ -24,7 +24,7 @@
                         <div class="col-md-5">
                             <div class="form-group">
                                 <label>Date of Score Card Execution: </label>
-                                <div class="ui calendar"  id="execution_date">
+                                <div class="ui calendar" id="execution_date">
                                     <input type="text" class="form-control" name="execution_date" required readonly>
                                 </div>
                             </div>
@@ -36,7 +36,7 @@
                         <div class="col-md-5">
                             <div class="form-group" hidden>
                                 <label>From Date: </label>
-                                <div class="ui calendar" id="from_date" >
+                                <div class="ui calendar" id="from_date">
                                     <input type="text" class="form-control" name="from_date" required readonly>
                                 </div>
                             </div>
@@ -47,7 +47,7 @@
                         <div class="col-md-5">
                             <div class="form-group" hidden>
                                 <label>To Date: </label>
-                                <div class="ui calendar" id="to_date" >
+                                <div class="ui calendar" id="to_date">
                                     <input type="text" class="form-control" name="to_date" required readonly>
                                 </div>
                             </div>
@@ -73,7 +73,7 @@
                         <div class="col-md-5">
                             <div class="form-group">
                                 <label>Upazila: </label>
-                                <select class="form-control" name="upazila" id="upazila" onclick="load_union(this)"
+                                <select class="form-control" name="upazila" id="upazila" onclick="load_facility(this)"
                                         required>
                                     <option value="">Select One</option>
                                 </select>
@@ -87,9 +87,7 @@
                                 <select class="form-control" name="facility_name" id="facility_name"
                                         onclick="loadtype(this)" required>
                                     <option value="">Select One</option>
-                                    {% for facility_id,facility_name in facility %}
-                                        <option value="{{ facility_id }}">{{ facility_name }}</option>
-                                    {% endfor %}
+
                                 </select>
                             </div>
                         </div>
@@ -182,8 +180,8 @@
 
 {% block additional-javascript %}
 
-{#    <script type="text/javascript" src="/static/js/bootstrap-datepicker.js"></script>#}
-     <script src="https://cdn.jsdelivr.net/semantic-ui/2.2.10/semantic.min.js"></script>
+    {#    <script type="text/javascript" src="/static/js/bootstrap-datepicker.js"></script>#}
+    <script src="https://cdn.jsdelivr.net/semantic-ui/2.2.10/semantic.min.js"></script>
     <script type="text/javascript" src="/static/js/calendar.min.js"></script>
     <script>
 
@@ -193,22 +191,22 @@
             popupOptions: {
                 position: 'bottom right'
             }
-{#            ,#}
-{#            formatter: {#}
-{#                date: function (date, settings) {#}
-{#                    if (!date) return '';#}
-{##}
-{#                    var day = date.getDate();#}
-{#                    var month = date.getMonth() + 1;#}
-{#                    var year = date.getFullYear();#}
-{##}
-{##}
-{#                    if (month < 10) {#}
-{#                        month = '0' + month#}
-{#                    }#}
-{#                    return year + '-' + month ;#}
-{#                }#}
-{#            }#}
+            {#            ,#}
+            {#            formatter: {#}
+            {#                date: function (date, settings) {#}
+            {#                    if (!date) return '';#}
+            {##}
+            {#                    var day = date.getDate();#}
+            {#                    var month = date.getMonth() + 1;#}
+            {#                    var year = date.getFullYear();#}
+            {##}
+            {##}
+            {#                    if (month < 10) {#}
+            {#                        month = '0' + month#}
+            {#                    }#}
+            {#                    return year + '-' + month ;#}
+            {#                }#}
+            {#            }#}
             ,
             onChange: function (date, text, mode) {
                 $('#to_date').calendar({
@@ -217,22 +215,22 @@
                         position: 'bottom right'
                     },
                     maxDate: new Date(date.getFullYear(), date.getMonth() + 3)
-{#                    ,#}
-{#                    formatter: {#}
-{#                        date: function (date, settings) {#}
-{#                            if (!date) return '';#}
-{##}
-{#                            var day = date.getDate();#}
-{#                            var month = date.getMonth() + 1;#}
-{#                            var year = date.getFullYear();#}
-{##}
-{##}
-{#                            if (month < 10) {#}
-{#                                month = '0' + month#}
-{#                            }#}
-{#                            return year + '-' + month ;#}
-{#                        }#}
-{#                    }#}
+                    {#                    ,#}
+                    {#                    formatter: {#}
+                    {#                        date: function (date, settings) {#}
+                    {#                            if (!date) return '';#}
+                    {##}
+                    {#                            var day = date.getDate();#}
+                    {#                            var month = date.getMonth() + 1;#}
+                    {#                            var year = date.getFullYear();#}
+                    {##}
+                    {##}
+                    {#                            if (month < 10) {#}
+                    {#                                month = '0' + month#}
+                    {#                            }#}
+                    {#                            return year + '-' + month ;#}
+                    {#                        }#}
+                    {#                    }#}
                 });
             }
 
@@ -367,7 +365,7 @@
         }
 
 
-        function load_union(upz_object) {
+        function load_facility(upz_object) {
             ajaxcall();
             upz = parseInt(upz_object.value)
             console.log(upz);
@@ -377,21 +375,19 @@
             else {
 
                 $.ajax({
-                    url: '/planmodule/getUnions/',
+                    url: '/planmodule/get_facility_by_upazila/',
                     type: 'POST',
                     dataType: 'json',
                     data: {'upz': upz},
-                    {#                    beforeSend: function () {#}
-                    {#                        $("#all_info_table").html('<div class="alert alert-success">Please Wait...loading....</div>');#}
-                    {#                    },#}
                     success: function (result) {
-                        console.log(result);
-                        var html_code = "<option value=\"\">Select One</option>";
+                        if (result.length > 0) {
+                            var html_code = "<option value=\"\">Select One</option>";
 
-                        for (i = 0; i < result.length; i++) {
-                            html_code += "<option value=\"" + result[i].id + "\"> " + result[i].field_name + "</option>";
+                            for (i = 0; i < result.length; i++) {
+                                html_code += "<option value=\"" + result[i].id + "\"> " + result[i].facilty_name + "</option>";
+                            }
+                            $('#facility_name').html(html_code);
                         }
-                        $('#union').html(html_code);
 
 
                     }
@@ -399,8 +395,6 @@
             }
 
         }
-
-
 
 
     </script>
