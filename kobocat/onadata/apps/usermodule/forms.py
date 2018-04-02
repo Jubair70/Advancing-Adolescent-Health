@@ -31,7 +31,7 @@ class UserForm(forms.ModelForm):
 
 class UserEditForm(forms.ModelForm):
     email = forms.EmailField(required=True)
-    username = forms.CharField(help_text='',max_length=10)
+    username = forms.CharField(help_text='',max_length=20)
 
     class Meta:
         model = User
@@ -49,13 +49,13 @@ class UserProfileForm(forms.ModelForm):
     organisation_name = forms.ModelChoiceField(label='Organisation Name',queryset=Organizations.objects.all(),empty_label="Select an Organization")
     country = forms.ChoiceField(choices=COUNTRIES, required=True, label='Country')
     position = forms.CharField(label="Position")
-
+    contact_number = forms.CharField(label="Contact Number")
     # expired = forms.DateTimeField(label="Expiry Date",required=False,initial=datetime.now()+ timedelta(days=90))
 
     class Meta:
         model = UserModuleProfile
         #fields = ('admin','employee_id','organisation_name','country','position','psu')
-        fields = ('admin','employee_id','organisation_name','country','position')
+        fields = ('admin','employee_id','organisation_name','country','position','contact_number')
 
     def __init__(self, *args, **kwargs):
         admin_check = kwargs.pop('admin_check', False)

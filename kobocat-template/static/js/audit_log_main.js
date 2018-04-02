@@ -5,9 +5,9 @@ function createTableRow(jsondata){
     var table = $('#tg-xY4Sf');
     
     var spTableRowData = '';
-    
+    if("instances" in jsonObj)
     var length = jsonObj.instances.length;
-     console.log(length);
+    else return;
     for (i = 0; i < length; i++){
         var serial = i+1;
         var form_title = jsonObj.instances[i].form_title;

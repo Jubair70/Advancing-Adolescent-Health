@@ -21,7 +21,7 @@
                         <select class="form-control" name="pngo" id="pngo">
                             <option value="">Select One</option>
                             <option value="LAMB">LAMB</option>
-                            <option value="ESSDO">ESSDO</option>
+                            <option value="ESDO">ESDO</option>
 
                         </select>
                     </div>
@@ -68,6 +68,7 @@
                     <th>Union</th>
                     <th>Orientation Date</th>
                     <th>Orientation Type</th>
+                    <th class="td-center">Action</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -118,7 +119,7 @@
         var community_orientation_list = {{ community_orientation_list|safe }};
 
         for (var idx in community_orientation_list) {
-            tbody += '<tr><td>' + community_orientation_list[idx].pngo_name + '</td><td>' + community_orientation_list[idx].upazila_name + '</td><td>' + community_orientation_list[idx].union_name  + '</td><td>' + community_orientation_list[idx].orientation_date + '</td><td>' + community_orientation_list[idx].orientation_type + '</td></tr>';
+            tbody += '<tr><td>' + community_orientation_list[idx].pngo_name + '</td><td>' + community_orientation_list[idx].upazila_name + '</td><td>' + community_orientation_list[idx].union_name  + '</td><td>' + community_orientation_list[idx].orientation_date + '</td><td>' + community_orientation_list[idx].orientation_type + '</td><td class="td-center"><a class="tooltips" data-placement="top" data-original-title="Edit" href=""><i class="fa fa-2x fa-pencil-square-o"></i></a><a class="delete-item tooltips" data-placement="top" data-toggle="modal" data-target="#confirm-delete" data-original-title="Delete" href="#" data-href="/planmodule/delete_community_orientation/' + community_orientation_list[idx].data_id + '"><i class="fa fa-2x fa-trash-o"></i></a></td></tr>';
         }
 
         $("#all_info_table").find('tbody').html(tbody);
@@ -170,7 +171,7 @@
                     var tbody = '';
 
                     for (var idx in result) {
-                        tbody += '<tr><td>' + result[idx].pngo_name + '</td><td>' + result[idx].upazila_name + '</td><td>' + result[idx].union_name  + '</td><td>' + result[idx].orientation_date + '</td><td>' + result[idx].orientation_type + '</td></tr>';
+                        tbody += '<tr><td>' + result[idx].pngo_name + '</td><td>' + result[idx].upazila_name + '</td><td>' + result[idx].union_name  + '</td><td>' + result[idx].orientation_date + '</td><td>' + result[idx].orientation_type + '</td><td class="td-center"><a class="tooltips" data-placement="top" data-original-title="Edit" href=""><i class="fa fa-2x fa-pencil-square-o"></i></a><a class="delete-item tooltips" data-placement="top" data-toggle="modal" data-target="#confirm-delete" data-original-title="Delete" href="#" data-href="/planmodule/delete_community_orientation/' + result[idx].data_id + '"><i class="fa fa-2x fa-trash-o"></i></a></td></tr>';
                     }
 
                     $("#all_info_table").find('tbody').html(tbody);
