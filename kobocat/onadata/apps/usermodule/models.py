@@ -17,6 +17,7 @@ class UserModuleProfile(models.Model):
     organisation_name = models.ForeignKey('Organizations', on_delete=models.PROTECT)
     country = models.CharField(max_length=100)
     position = models.CharField(max_length=100)
+    contact_number = models.CharField(max_length=100)
     #psu = models.OneToOneField(GeoPSU,related_name='user_psu',on_delete=models.PROTECT)
     
     # Override the __unicode__() method to return out something meaningful!

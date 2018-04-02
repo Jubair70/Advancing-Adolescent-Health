@@ -176,6 +176,7 @@ def register(request):
             UserProfileForm.base_fields['organisation_name'] = forms.ModelChoiceField(queryset=Organizations.objects.filter(pk__in=org_id_list)
 ,empty_label="Select a Organization")
         profile_form = UserProfileForm(admin_check=admin_check)
+        print(profile_form)
 
     # Render the template depending on the context.
     return render_to_response(

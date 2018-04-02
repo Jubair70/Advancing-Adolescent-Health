@@ -935,11 +935,25 @@ def mis_report_district_list(request):
 
 @login_required
 def community_orientation_list(request):
-    query = "SELECT DISTINCT ON(data_id) data_id, pngo pngo_name, (SELECT field_name FROM geo_data WHERE geocode = upazila) AS upazila_name, (SELECT field_name FROM geo_data WHERE geocode = union_name) AS union_name, date AS orientation_date, CASE orientation_type WHEN '1' THEN 'কমিউনিটি ওরিয়েন্টেশন' WHEN '2' THEN 'ধর্মীয় নেতা'  WHEN '3' THEN  'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' WHEN '4' THEN 'ইস্যুভিত্তিক মিটিং'  END AS orientation_type FROM vw_comm_orientation"
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+    # fetching all organization recursively of current_user
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+    query = "SELECT DISTINCT ON(data_id) data_id, pngo pngo_name, (SELECT field_name FROM geo_data WHERE geocode = upazila) AS upazila_name, (SELECT field_name FROM geo_data WHERE geocode = union_name) AS union_name, date AS orientation_date, CASE orientation_type WHEN '1' THEN 'কমিউনিটি ওরিয়েন্টেশন' WHEN '2' THEN 'ধর্মীয় নেতা'  WHEN '3' THEN  'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' WHEN '4' THEN 'ইস্যুভিত্তিক মিটিং'  END AS orientation_type FROM vw_comm_orientation where pngo in (select organization from usermodule_organizations where id::text in" + str(org)+" )"
     community_orientation_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return render(request, 'planmodule/community_orientation_list.html', {
         'community_orientation_list': community_orientation_list
     })
+
+@login_required
+def delete_community_orientation(request, data_id):
+    delete_query = "update logger_instance set deleted_at = now() where xform_id = 564 and id = " + str(data_id)
+    __db_commit_query(delete_query)
+    return HttpResponseRedirect("/planmodule/community_orientation_list/")
 
 
 @login_required
@@ -1104,4 +1118,11 @@ def update_mis_report_district_form(request):
         comments = request.POST.get('comments')
         update_query = "UPDATE public.plan_mis_report_district_form SET activity_date='"+str(activity_date)+"', activity_id="+str(activity_id)+", number_of_activity="+str(number_of_activity)+", male_boys_unmarried="+str(male_boys_unmarried)+", male_boys_married="+str(male_boys_married)+", female_girls_unmarried="+str(female_girls_unmarried)+", female_girls_married="+str(female_girls_married)+", comments='"+str(comments)+"' WHERE id="+str(mis_report_id)
         __db_commit_query(update_query)
+    return HttpResponseRedirect("/planmodule/mis_report_district_list/")
+
+
+@login_required
+def delete_mis_report_district_form(request, mis_report_id):
+    delete_query = "delete from plan_mis_report_district_form where id = " + str(mis_report_id) + ""
+    __db_commit_query(delete_query)
     return HttpResponseRedirect("/planmodule/mis_report_district_list/")

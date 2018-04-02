@@ -18,6 +18,7 @@ from django.db import connection
 from onadata.libs.utils.user_auth import has_permission, get_xform_and_perms,\
     helper_auth_helper, has_edit_permission
 from onadata.libs.utils.log import audit_log, Actions
+import pandas
 
 # Create your views here.
 
@@ -60,25 +61,87 @@ def audit_log_main(request):
             if (xform.shared_data or can_view or request.session.get('public_link') == xform.uuid):
                 audit_log_view_json.setdefault(key, [])
                 audit_log_view_json[key].append(row_data)
-        except Exception, e: #XForm.DoesNotExist
-            print('corresponding xfomr not present',e)
+        except Exception: #XForm.DoesNotExist
+            print('corresponding xfomr not present',Exception)
             xform_obj = None
             #xform_obj = XForm.objects.get(pk=xform_id)
 
 
 
     print 'audit_log_view_json::----'
-    print audit_log_view_json
+    # print audit_log_view_json
+    form_id_query = "select distinct form_id,(select id_string from logger_xform where id = form_id) form_name from audit_logger_instance where form_id in (select id from logger_xform)"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(form_id_query,connection)
+    form_id = []
+    form_name = []
+    if not df.empty:
+        form_id = df.form_id.tolist()
+        form_name = df.form_name.tolist()
+    form = zip(form_id,form_name)
+
+
     response = HttpResponse()
+    print(json.dumps(audit_log_view_json))
     variables = RequestContext(request, {
     	'head_title': 'Project Summary',
     	'log_detail':json.dumps(audit_log_view_json),
     	'request_user': username,
+        'form':form
     	})
     response = render(request,'audit_log/audit_main_view.html'
     	,variables)
 
     return response
+
+
+@login_required
+def getFormData(request):
+    username = request.user
+    _DATETIME_FORMAT_SUBMIT = '%Y-%m-%d'
+    from_date = request.POST.get('from_date')
+    to_date = request.POST.get('to_date')
+    form_id = request.POST.get('form_id')
+    filter_query = "where  change_time::date between '" + str(from_date) + "' and '" + str(to_date) + "'"
+    if form_id !="":
+        filter_query += " and form_id = "+str(form_id)
+    audit_log_view_json = {}
+    cursor = connection.cursor()
+    get_all_query = "SELECT id,form_id,instance_id,old_json,new_json,change_time FROM audit_logger_instance "+str(filter_query)+" order by change_time desc"
+    cursor.execute(get_all_query)
+    xform_instances = cursor.fetchall()
+    for xform in xform_instances:
+
+
+        data_id = xform[0]
+        xform_id = xform[1]
+        instance_id = xform[2]
+        row_data = {}
+        try:
+            xform_obj = XForm.objects.get(pk=xform_id)
+            json_data = json.dumps(xform[3])
+            submittedBy = get_username(str(json_data))
+            row_data['form_title'] = xform_obj.title
+            row_data['form_id_string'] = xform_obj.id_string
+            row_data['instance_id'] = instance_id
+            row_data['submittedBy'] = submittedBy
+            row_data['form_time'] = xform[5].strftime(_DATETIME_FORMAT_SUBMIT)
+            row_data['data_id'] = data_id
+            key = "instances"
+
+            xform, is_owner, can_edit, can_view = get_xform_and_perms(
+        username, xform_obj.id_string, request)
+            # print('is_owner, can_edit, can_view', is_owner,can_edit,can_view)
+            if (xform.shared_data or can_view or request.session.get('public_link') == xform.uuid):
+                audit_log_view_json.setdefault(key, [])
+                audit_log_view_json[key].append(row_data)
+        except Exception: #XForm.DoesNotExist
+            print('corresponding xfomr not present',Exception)
+            xform_obj = None
+            #xform_obj = XForm.objects.get(pk=xform_id)
+    log_data = json.dumps(audit_log_view_json)
+    return HttpResponse(log_data)
+
 
 
 def get_username(json_data):

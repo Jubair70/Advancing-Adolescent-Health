@@ -56,6 +56,7 @@ urlpatterns = patterns('',
                        url(r'^get_marriage_info_list/$', views_api.get_marriage_info_list),
                        url(r'^get_referrals_list/$', views_api.get_referrals_list),
                        url(r'^commnity_orientation_form/$', views_api.commnity_orientation_form),
+                        url(r'^delete_community_orientation/(?P<data_id>\d+)/$', views.delete_community_orientation, name='delete_community_orientation'),
 
                        url(r'^mis_report_district_list/$', views.mis_report_district_list,
                            name='mis_report_district_list'),
@@ -68,7 +69,7 @@ urlpatterns = patterns('',
                            name='edit_mis_report_district_form'),
                        url(r'^update_mis_report_district_form/$', views.update_mis_report_district_form,
                            name='update_mis_report_district_form'),
-
+                        url(r'^delete_mis_report_district_form/(?P<mis_report_id>\d+)/$', views.delete_mis_report_district_form, name='delete_mis_report_district_form'),
 url(r'^community_orientation_list/$', views.community_orientation_list,name='community_orientation_list'),
 url(r'^getCommunityData/$', views.getCommunityData, name='getCommunityData'),
 

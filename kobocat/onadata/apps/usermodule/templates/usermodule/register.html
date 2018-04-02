@@ -111,6 +111,13 @@
                     <div class="row" >
                         <div class="col-md-6">
                             <div class="form-group">
+                                <label for="{{ profile_form.contact_number.id_for_label }}">Contact Number (e.g: 01xxxxxxxxx):</label>
+                                <input type="text" name="{{ profile_form.contact_number.name }}" class="form-control" pattern="^(?:\+88|01)?(?:\d{11}|\d{13})$">
+                                 <span class="help-block" hidden>{{ profile_form.contact_number.errors.as_text }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
                                 <label for="{{ profile_form.position.id_for_label }}" hidden>Position:</label>
                                 <input type="hidden" name="{{ profile_form.position.name }}" class="form-control" value="default">
                                 <span class="help-block" hidden>{{ profile_form.position.errors.as_text }}</span>
