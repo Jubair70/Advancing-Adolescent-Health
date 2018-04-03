@@ -574,3 +574,10 @@ def get_referrals_list(request):
         username) + "'))"
     referral_list_data = __db_fetch_values_dict(referral_list_query)
     return HttpResponse(json.dumps(referral_list_data))
+
+
+@csrf_exempt
+def get_facility_by_upazila(request):
+    upazila = request.POST.get('upz')
+    facility_list_data = __db_fetch_values_dict("select id,facilty_name from plan_facilities where upazilla = "+str(upazila))
+    return HttpResponse(json.dumps(facility_list_data))
