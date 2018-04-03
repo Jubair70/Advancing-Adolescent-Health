@@ -31,7 +31,7 @@ def audit_log_main(request):
     xform_id = 0
     instance_id = 0
     cursor = connection.cursor()
-    get_all_query = "SELECT id,form_id,instance_id,old_json,new_json,change_time FROM audit_logger_instance order by change_time desc"
+    get_all_query = "SELECT id,form_id,instance_id,old_json,new_json,change_time FROM audit_logger_instance where json_diff_old_json(old_json,new_json) <> ''  order by change_time desc"
     cursor.execute(get_all_query)
     xform_instances = cursor.fetchall()
     rowcount = cursor.rowcount
@@ -102,7 +102,7 @@ def getFormData(request):
     from_date = request.POST.get('from_date')
     to_date = request.POST.get('to_date')
     form_id = request.POST.get('form_id')
-    filter_query = "where  change_time::date between '" + str(from_date) + "' and '" + str(to_date) + "'"
+    filter_query = "where json_diff_old_json(old_json,new_json) <> '' and change_time::date between '" + str(from_date) + "' and '" + str(to_date) + "'"
     if form_id !="":
         filter_query += " and form_id = "+str(form_id)
     audit_log_view_json = {}
