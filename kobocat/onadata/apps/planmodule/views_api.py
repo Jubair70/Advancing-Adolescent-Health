@@ -579,5 +579,5 @@ def get_referrals_list(request):
 @csrf_exempt
 def get_facility_by_upazila(request):
     upazila = request.POST.get('upz')
-    facility_list_data = __db_fetch_values_dict("select id,facilty_name from plan_facilities where upazilla = "+str(upazila))
+    facility_list_data = __db_fetch_values_dict("select facilty_id,facilty_name from plan_facilities where upazilla = "+str(upazila))
     return HttpResponse(json.dumps(facility_list_data))

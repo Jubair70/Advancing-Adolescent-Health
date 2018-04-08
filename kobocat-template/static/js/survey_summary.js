@@ -190,11 +190,11 @@ console.log(isOwner+'--'+dataObj);
     var table = $('#tg-xY4Sf');
     var spDataTableRow = $('<tr></tr>');
     var spTableRowData = $('<td class="tg-yw4l"><a id = "project_link" href="/usermodule/'+jsonOwner[dataObj][1]+'/projects-views/' + dataObj + '/" >'+title+'<i class="icon-gap fa fa-external-link"></i></a><br>'
-      + newSubmission + ' '+ details +' '+ projectSettings  + ' ' + roleSettings + '</td><td class="tg-yw4l"><table class="table table-condensed"><tr><td class="half-width no-top">Last Submission</td><td class="half-width no-top">'+maxDate+'</td></tr><tr><td class="half-width">Today</td><td class="half-width">'+today+'</td></tr><tr><td class="half-width">This Month</td><td class="half-width">'+this_month+'</td></tr><tr><td class="half-width">Total</td><td class="half-width">'+length+'</td></tr></table></td><td class="tg-yw4l" id="'+dataObj+'" style="width:300px; min-width: 290px; height: 180px; margin: 0 auto"></td>');
+      + newSubmission + ' '+ details +' '+ projectSettings  + ' ' + roleSettings + '</td><td class="tg-yw4l"><table class="table table-condensed"><tr><td class="half-width no-top">Last Submission</td><td class="half-width no-top">'+maxDate+'</td></tr><tr><td class="half-width">Today</td><td class="half-width">'+today+'</td></tr><tr><td class="half-width">This Month</td><td class="half-width">'+this_month+'</td></tr><tr><td class="half-width">Total</td><td class="half-width">'+length+'</td></tr></table></td>');
 
     spDataTableRow.append(spTableRowData);
     table.append(spDataTableRow);
-    createChart(dataObj,series_val);
+  //  createChart(dataObj,series_val);
 }
 
 function pageReloadWithStatus(param_str){

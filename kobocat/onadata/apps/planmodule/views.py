@@ -448,8 +448,7 @@ def scorecard_report(request):
     org_id_list = [org.pk for org in all_organizations]
     org = str(map(str, org_id_list))
     org = org.replace('[', '(').replace(']', ')')
-    query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(org)
-    scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+
     query_pngo = "select id,organization from public.usermodule_organizations where id in "+str(org)
     df = pandas.DataFrame()
     df = pandas.read_sql(query_pngo,connection)
@@ -457,12 +456,31 @@ def scorecard_report(request):
     org_name = df.organization.tolist()
     organization = zip(org_id,org_name)
 
-    query = "select id,field_name from geo_data where field_type_id = 88 "
+    query = "select geoid from usermodule_catchment_area where user_id = (select id from auth_user where username = '"+str(current_user)+"')"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
-    upz_id = df.id.tolist()
-    upz_name = df.field_name.tolist()
-    upazila = zip(upz_id, upz_name)
+    if df.empty:
+        query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where pngo_id in " + str(
+            org)
+        scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+        query = "select id,field_name from geo_data where field_type_id = 88 "
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        upz_id = df.id.tolist()
+        upz_name = df.field_name.tolist()
+        upazila = zip(upz_id, upz_name)
+    else:
+        upazila_geoid = df.geoid.tolist()[0]
+        query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard where upazilla = "+str(upazila_geoid)+" and  pngo_id in " + str(
+            org)
+        scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+        print(query)
+        query = "select id,field_name from geo_data where field_type_id = 88 and id = "+str(upazila_geoid)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        upz_id = df.id.tolist()
+        upz_name = df.field_name.tolist()
+        upazila = zip(upz_id, upz_name)
 
     return render(request, 'planmodule/scorecard_report.html', {
         'scorecard_list': scorecard_list,'organization':organization,'upazila':upazila
@@ -471,6 +489,14 @@ def scorecard_report(request):
 
 @login_required
 def getScoreCardData(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+
     from_date = request.POST.get('from_date')
     to_date = request.POST.get('to_date')
     upazila = request.POST.get('upazila')
@@ -478,9 +504,18 @@ def getScoreCardData(request):
     filter_query = "where  execution_date between '" + str(from_date) + "' and '" + str(to_date) + "'"
     if upazila !="":
         filter_query += " and upazilla = "+str(upazila)
+    else:
+        query = "select geoid from usermodule_catchment_area where user_id = "+str(request.user.id)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        upazila_geoid = df.geoid.tolist()[0]
+        filter_query += " and upazilla = " + str(upazila_geoid)
     if pngo !="":
         filter_query += " and pngo_id = "+str(pngo)
+    else:
+        filter_query += " and pngo_id in " + str(org)
     query = "select id,(select field_name from public.geo_data where id = district) district,(select field_name from public.geo_data where id = upazilla) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
+    print(query)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return HttpResponse(scorecard_list)
 
@@ -558,6 +593,7 @@ def test_report(request):
     org = org.replace('[', '(').replace(']', ')')
     query = "with t as( SELECT username, village_geocode, village_name, union_geocode, union_name, upazilla_geocode, upazilla_name, district_geocode, district_name, group_type, maritial_status, submission_date, test_type, group_id, adolescent_name, id_adolescent, number_obtained,case when number_obtained::int <=5 then 1 else 0 end poor,case when number_obtained::int >=6 and number_obtained::int <=9 then 1 else 0 end good,case when number_obtained::int >=10 then 1 else 0 end excellent FROM public.vw_life_skill_education_test where pngo_id in "+str(org)+")select group_id,case when test_type='1' then 'Pre' else 'Post' end test_type,submission_date,count(adolescent_name) enrolled,sum(poor) poor,sum(good) good,sum(excellent) excellent from t group by submission_date,poor,test_type,group_id"
     test_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+
 
     query_pngo = "select id,organization from public.usermodule_organizations where id in "+str(org)
     df = pandas.DataFrame()

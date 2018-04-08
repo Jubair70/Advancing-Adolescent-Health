@@ -8,7 +8,7 @@ import operator
 from bson import json_util
 from django.db.models import Count,Q
 import xml.etree.ElementTree as ET
-
+import pandas
 
 from django.conf import settings
 from django.core import serializers
@@ -81,6 +81,10 @@ from django.forms.formsets import formset_factory
 from onadata.apps.usermodule.forms import ProjectPermissionForm
 from onadata.apps.usermodule.views_project import get_own_and_partner_orgs_usermodule_users, get_permissions
 from onadata.libs.tasks import instance_parse
+from onadata.apps.usermodule.models import UserModuleProfile, UserPasswordHistory, UserFailedLogin, Organizations, \
+    OrganizationDataAccess
+
+
 
 xform_instances = settings.MONGO_DB.instances
 key_whitelist = ['$or', '$and', '$exists', '$in', '$gt', '$gte',
@@ -1587,8 +1591,55 @@ def query_chart(request, username):
     output = render(request,'query_report.html',variables);
     return HttpResponse(output)
 #submission_date_query = "SELECT row_to_json(t) FROM ( SELECT id, user_id, xform_id, survey_type_id, date_created, date_modified, status, uuid FROM public.logger_instance )t"
+
+def get_recursive_organization_children(organization, organization_list=[]):
+    organization_list.append(organization)
+    observables = Organizations.objects.filter(parent_organization=organization)
+    for org in observables:
+        if org not in organization_list:
+            organization_list = list((set(get_recursive_organization_children(org, organization_list))))
+    return list(set(organization_list))
+
+
 @login_required
-def survey_summary(request): 
+def survey_summary(request):
+    current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
+    if current_user:
+        current_user = current_user[0]
+    all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
+    org_id_list = [org.pk for org in all_organizations]
+    org = str(map(str, org_id_list))
+    org = org.replace('[', '(').replace(']', ')')
+
+    current_geoid_query  = "select geoid from usermodule_catchment_area where user_id = "+str(request.user.id)
+    df = pandas.DataFrame()
+    df = pandas.read_sql(current_geoid_query, connection)
+    if df.empty:
+        query = "select user_id from usermodule_usermoduleprofile where organisation_name_id in " + str(org)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        user_id = df.user_id.tolist()
+        user_id = str(map(str, user_id))
+        user_id = user_id.replace('[', '(').replace(']', ')')
+    else:
+        geoid = df.geoid.tolist()[0]
+        users_query = "select user_id from usermodule_catchment_area where geoid = " + str(geoid)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(users_query, connection)
+        user_id = df.user_id.tolist()
+        user_id = str(map(str, user_id))
+        user_id = user_id.replace('[', '(').replace(']', ')')
+
+        query = "select user_id from usermodule_usermoduleprofile where organisation_name_id in " + str(org)+"and user_id in "+str(user_id)
+        df = pandas.DataFrame()
+        df = pandas.read_sql(query, connection)
+        user_id = df.user_id.tolist()
+        user_id = str(map(str, user_id))
+        user_id = user_id.replace('[', '(').replace(']', ')')
+
+
+
+
     instance_parse()  
     surveyData = {}
     permission_data = {}
@@ -1644,14 +1695,14 @@ def survey_summary(request):
                 permission_data[str(form_id)] = users_with_perms
 
 
-        print users_with_perms
-        print permission_data
+        # print users_with_perms
+        # print permission_data
         owner_data = []
         owner_data.append(is_owner)
         owner_data.append(xform.user.username)
         owner_data.append(request.user.username)
         ownership[form_id] = owner_data
-        submission_date_query = "SELECT (json->>'_submission_time')::timestamp::date AS day_of_submission FROM logger_instance WHERE xform_id="+str(xform.id)+""
+        submission_date_query = "SELECT (json->>'_submission_time')::timestamp::date AS day_of_submission FROM logger_instance WHERE xform_id="+str(xform.id)+" and user_id in "+str(user_id)
         cursor.execute(submission_date_query)
         fetchVal = cursor.fetchall();
         rowcount = cursor.rowcount
@@ -1665,7 +1716,6 @@ def survey_summary(request):
                 surveyData[form_id]= date
    #print '----------surveyObj----------'
     #print surveyData
-
     variables = RequestContext(request, {
         'head_title': 'Project Summary',
         'total_submission': totalSubmission,
