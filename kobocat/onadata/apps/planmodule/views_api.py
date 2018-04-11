@@ -190,8 +190,7 @@ def get_cmp_list(request):
 @csrf_exempt
 def get_lse_group_list(request):
     username = request.GET.get('username')
-    lse_grp_list_query = "SELECT row_number() OVER () as serial_no,data_id as group_id ,pngo, district, upazila, union_name, mouza, village, para, group_no, group_type,maritial_status, username,(select count(*) from vw_grp_reg_sessions where group_id::int = data_id) as no_of_sessions,((with t as(select group_id, unnest(string_to_array(adolescent_name, ' ')) as adolescent_name from vw_lse_grp_members) select count(*) from t where group_id::int = data_id)) as no_of_adols FROM public.vw_grp_registration where union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
-        username) + "'))"
+    lse_grp_list_query = "SELECT row_number() OVER () as serial_no,data_id as group_id ,pngo, district, upazila, union_name, mouza, village, para, group_no, group_type,maritial_status, username,(select count(*) from vw_grp_reg_sessions where group_id::int = vw_grp_registration.data_id) as no_of_sessions,((with t as(select group_id, unnest(string_to_array(adolescent_name, ' ')) as adolescent_name from vw_lse_grp_members) select count(*) from t where group_id::int = vw_grp_registration.data_id)) as no_of_adols FROM public.vw_grp_registration where union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(username) + "'))"
     lse_grp_list_data = __db_fetch_values_dict(lse_grp_list_query)
     return HttpResponse(json.dumps(lse_grp_list_data))
 
@@ -222,6 +221,13 @@ def get_adolescent_list_by_group(request):
     # return HttpResponse(json.dumps(adolescent_list_data))
 
     curated_data = []
+
+    adolescent_without_sessions = __db_fetch_values_dict("with k as(with t as(select Unnest(String_to_array(adolescent_name, ' ')) as id_adolescent from vw_lse_grp_members where group_id::int = "+str(group_id)+"), s as(select id_adolescent from vw_grp_all_sessions where group_id::int = 17632) select * from t except(select * from s)) select id_adolescent,(SELECT adolescent_name FROM   plan_adolescents_profile WHERE  id_adolescent = k.id_adolescent) as adolescent_name from k")
+
+    regular_sessions = __db_fetch_values_dict("select distinct session from vw_grp_reg_sessions where group_id::int = "+str(group_id))
+    #print adolescent_without_sessions
+    #print regular_sessions
+
     group_attendance_data = __db_fetch_values_dict(
         "WITH v AS(WITH t AS( SELECT session_date, group_id, Unnest(String_to_array(adolescent_name, ' ')) AS id_adolescent, session, '1' AS session_type FROM vw_grp_reg_sessions UNION ALL SELECT session_date, group_id, Unnest(String_to_array(adolescent_name, ' ')) AS id_adolescent, session, '2' AS session_type FROM vw_grp_mkp_sessions) SELECT DISTINCT ON ( id_adolescent,session) * FROM t), n AS(WITH m AS ( SELECT group_id, Unnest(String_to_array(adolescent_name, ' ')) AS id_adolescent FROM vw_lse_grp_members) SELECT m.id_adolescent, m.group_id, ( SELECT adolescent_name FROM plan_adolescents_profile WHERE id_adolescent = m.id_adolescent) AS adolescent_name FROM m) SELECT n.id_adolescent, ( SELECT adolescent_name FROM plan_adolescents_profile WHERE id_adolescent = n.id_adolescent) AS adolescent_name, session, session_type FROM v, n WHERE v.group_id = n.group_id AND v.id_adolescent = n.id_adolescent AND v.group_id::int = " + str(
             group_id) + " union all (with h as(select group_id,unnest(string_to_array(adolescent_name, ' ')) as id_adolescent from vw_lse_grp_members where group_id is not null and group_id not in (select distinct group_id from vw_grp_reg_sessions union select distinct group_id from vw_grp_mkp_sessions) and group_id::int = " + str(
@@ -242,6 +248,8 @@ def get_adolescent_list_by_group(request):
         else:
             adolescent_sessions[gad['id_adolescent']].append({gad['session']: gad['session_type']})
 
+
+
     for adol in adolescent_sessions:
         sessions = []
         for gasl in group_all_session_list:
@@ -257,6 +265,8 @@ def get_adolescent_list_by_group(request):
             else:
                 sessions.append({'sessions': gasl, 'is_present': 0})
 
+        ################################################################
+
         if adol not in listed_adols:
             listed_adols.append(adol)
             new_od = [d for d in group_attendance_data if d['id_adolescent'] == adol][0]
@@ -264,6 +274,19 @@ def get_adolescent_list_by_group(request):
             del new_od['session_type']
             new_od.update({'sessions': sessions})
             curated_data.append(new_od)
+
+    for aws in adolescent_without_sessions:
+        aws_dict = {}
+        session_details_outer = []
+        for grs in regular_sessions:
+            session_details = {}
+            session_details['sessions'] = grs['session']
+            session_details['is_present'] = 0
+        session_details_outer.append(session_details)
+        aws_dict['sessions'] = session_details_outer
+        aws_dict['adolescent_name'] = aws['adolescent_name']
+        aws_dict['id_adolescent'] = aws['id_adolescent']
+        curated_data.append(aws_dict)
 
     return HttpResponse(json.dumps(curated_data))
 
@@ -294,11 +317,7 @@ def get_session_list_group(request):
 
 def get_makeup_session_data(request):
     group_id = request.GET.get('group_id')
-    makeup_session_query = "with g as(with s as(with d as(with v as(select name,label from vw_sessions_list where myfilter =(select group_type from vw_grp_registration where data_id = " + str(
-        group_id) + ")) select * from v cross join (with n as(select unnest(string_to_array(adolescent_name, ' ')) as id_adolescent from vw_lse_grp_members where group_id::int = " + str(
-        group_id) + ") select distinct id_adolescent from n) p) select name as session,id_adolescent from d), w as(with c as(with a as(select unnest(string_to_array(adolescent_name, ' ')) as id_adolescent,session from vw_grp_mkp_sessions where group_id::int = " + str(
-        group_id) + ") select distinct on (id_adolescent) session,id_adolescent from a union all (with b as(select unnest(string_to_array(adolescent_name, ' ')) as id_adolescent,session from vw_grp_reg_sessions where group_id::int = " + str(
-        group_id) + ") select distinct on (id_adolescent) session,id_adolescent from b)) select distinct session,id_adolescent from c) select session,id_adolescent from s except (select * from w)) select (select label from vw_sessions_list where name = session limit 1) as sessionname,session as sessionid,(select adolescent_name from plan_adolescents_profile where id_adolescent = g.id_adolescent) as adolescent_name,id_adolescent from g"
+    makeup_session_query = "with g as(with k as(with m as (select unnest(String_to_array(adolescent_name,' ')) as adolescent_name from vw_lse_grp_members where group_id::int = "+str(group_id)+"), n as(with t as(select json_array_elements(json::json->'choices'->'session') as sessions_list from logger_xform where id = 558) select sessions_list->>'name' as session_no from t where sessions_list->>'myfilter' = (select group_type from vw_grp_registration where data_id::int = "+str(group_id)+")) select session_no as sessionid,adolescent_name as adolescentid from m,n), q as (with t as(select session,unnest(String_to_array(adolescent_name,' ')) as adolescent_name from vw_grp_reg_sessions where group_id::int = "+str(group_id)+" union all select session,unnest(String_to_array(adolescent_name,' ')) as adolescent_name from vw_grp_mkp_sessions where group_id::int = "+str(group_id)+") select distinct session as sessionid,adolescent_name as adolescentid from t) select * from k except (select * from q)) select (select label from vw_sessions_list where name = sessionid limit 1) as sessionname,sessionid,(select adolescent_name from plan_adolescents_profile where id_adolescent = adolescentid) as adolescent,adolescentid from g"
     makeup_session_data = __db_fetch_values(makeup_session_query)
 
     response = HttpResponse(content_type='text/csv')
@@ -581,3 +600,11 @@ def get_facility_by_upazila(request):
     upazila = request.POST.get('upz')
     facility_list_data = __db_fetch_values_dict("select facilty_id,facilty_name from plan_facilities where upazilla = "+str(upazila))
     return HttpResponse(json.dumps(facility_list_data))
+
+
+
+@csrf_exempt
+def get_session_list_by_group_type(request):
+    group_type = request.GET.get('group_type')
+    session_list = __db_fetch_values_dict("with t as(select json_array_elements(json::json->'choices'->'session') as sessions_list from logger_xform where id = 558) select sessions_list->>'name' as session_no,sessions_list->'label' as session_name from t where sessions_list->>'myfilter' = '"+str(group_type)+"'")
+    return HttpResponse(json.dumps(session_list))
