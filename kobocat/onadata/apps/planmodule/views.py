@@ -508,8 +508,9 @@ def getScoreCardData(request):
         query = "select geoid from usermodule_catchment_area where user_id = "+str(request.user.id)
         df = pandas.DataFrame()
         df = pandas.read_sql(query, connection)
-        upazila_geoid = df.geoid.tolist()[0]
-        filter_query += " and upazilla = " + str(upazila_geoid)
+        if not df.empty:
+            upazila_geoid = df.geoid.tolist()[0]
+            filter_query += " and upazilla = " + str(upazila_geoid)
     if pngo !="":
         filter_query += " and pngo_id = "+str(pngo)
     else:
@@ -1162,3 +1163,79 @@ def delete_mis_report_district_form(request, mis_report_id):
     delete_query = "delete from plan_mis_report_district_form where id = " + str(mis_report_id) + ""
     __db_commit_query(delete_query)
     return HttpResponseRedirect("/planmodule/mis_report_district_list/")
+
+import simplejson
+from onadata.apps.planmodule.forms import FileShareForm
+
+def getAjaxMessage(type, message):
+    data = {}
+    data['type'] = type
+    data['messages'] = message
+    return data
+
+@login_required
+def file_share(request):
+    form = FileShareForm()
+    if request.method == 'POST':
+        form = FileShareForm(request.POST, request.FILES)
+        des = ''
+        if form.is_valid():
+            title = request.POST.get('title')
+            des = upload_shared_file(request.FILES['shared_file'],title)
+            current_user = request.user.id
+            created_date = datetime.datetime.today().strftime('%Y-%m-%d')
+            #insert_query = "INSERT INTO public.narrative_report_data ( month_year, ngo, id, file_path) VALUES ( '"+month+"', '"+ngo+"', DEFAULT , '"+des+"');	"
+            insert_query = "INSERT INTO public.file_shared ( created_date, shared_file, user_id, id, title) VALUES ( '"+created_date+"', '"+des+"', "+str(current_user)+", DEFAULT, '"+title+"');"
+            # print insert_query
+            __db_commit_query(insert_query)
+            data = getAjaxMessage("success",
+                                        "<i class='fa fa-check-circle'> </i>  data has been uploaded successfully.")
+        else:
+            #print form.as_p()
+            # Form is not valid, Send Error message with Form
+            return render(request, "eyfw/file_shared/file_share_form.html", {'form': form},status=500)
+        return HttpResponse(simplejson.dumps(data), content_type="application/json")
+
+    return render(request, "eyfw/file_shared/file_share.html", {'form': form})
+
+
+def upload_shared_file(file,title):
+    if file:
+        #get system time in miliseconds
+        millis = int(round(time.time() * 1000))
+        filePath = title+'_'+str(millis)+'_'+str(file.name)
+        destination = open('onadata/media/shared_file/'+filePath, 'w+')
+        for chunk in file.chunks():
+            destination.write(chunk)
+        destination.close()
+
+    return filePath
+
+
+@login_required
+def getSharedFileList(request):
+    data_query = "select *,(select first_name from auth_user where id= user_id limit 1)  as username from file_shared order by id desc "
+    data = __db_fetch_values_dict(data_query)
+    data_list = []
+    data_dict = {}
+    for tmp in data:
+        data_dict['id'] = tmp['id']
+        data_dict['title'] = tmp['title']
+        data_dict['created_date'] = tmp['created_date']
+        data_dict['shared_file'] = tmp['shared_file']
+        data_dict['username'] = tmp['username']
+        data_list.append(data_dict.copy())
+        data_dict.clear()
+
+    return render(request, "eyfw/file_shared/file_shared_datalist.html", {'dataset': data_list})
+
+
+@login_required
+def delete_sharedFile_data(request,id):
+    delete_query = "delete from public.file_shared where id = " + id
+    #print delete_query
+    __db_commit_query(delete_query)
+    data = getAjaxMessage("success",
+                                "<i class='fa fa-check-circle'> </i> Data has been deleted successfully.")
+
+    return HttpResponse(simplejson.dumps(data), content_type="application/json")
