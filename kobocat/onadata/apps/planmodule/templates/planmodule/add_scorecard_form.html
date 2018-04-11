@@ -366,11 +366,12 @@
 
 
         function load_facility(upz_object) {
+            $('#facility_name').html("<option value=\"\">Select One</option>");
             ajaxcall();
             upz = parseInt(upz_object.value)
             console.log(upz);
             if (isNaN(parseFloat(upz))) {
-                $('#union').html("<option value=\"\">Select One</option>");
+                $('#facility_name').html("<option value=\"\">Select One</option>");
             }
             else {
 
@@ -384,7 +385,7 @@
                             var html_code = "<option value=\"\">Select One</option>";
 
                             for (i = 0; i < result.length; i++) {
-                                html_code += "<option value=\"" + result[i].id + "\"> " + result[i].facilty_name + "</option>";
+                                html_code += "<option value=\"" + result[i].facilty_id + "\"> " + result[i].facilty_name + "</option>";
                             }
                             $('#facility_name').html(html_code);
                         }

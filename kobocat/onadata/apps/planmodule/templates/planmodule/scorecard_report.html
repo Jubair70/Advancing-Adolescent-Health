@@ -21,7 +21,7 @@
                     <div class="form-group">
                         <label>From Date: </label>
                         <div class="ui calendar" id="from_date">
-                            <input type="text" class="form-control"  name="from_date" value="getDesiredDate(1)"  readonly>
+                            <input type="text" class="form-control"  name="from_date" readonly>
                         </div>
                     </div>
                 </div>
@@ -30,7 +30,7 @@
                     <div class="form-group">
                         <label>To Date: </label>
                         <div class="ui calendar" id="to_date">
-                            <input type="text" class="form-control" name="to_date" value="getToday(2)"  readonly>
+                            <input type="text" class="form-control" name="to_date"   readonly>
                         </div>
                     </div>
                 </div>
@@ -202,6 +202,8 @@
                 }
             }
         });
+        $('#from_date').calendar('set date',getDesiredDate(2));
+        $('#to_date').calendar('set date',getDesiredDate(1));
 
         $('#generate_report').on('click',function () {
             console.log("sfsfv");

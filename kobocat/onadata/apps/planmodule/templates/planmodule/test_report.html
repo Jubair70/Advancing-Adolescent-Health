@@ -212,6 +212,7 @@
     <script>
         var tbody = '';
         var test_list = {{ test_list|safe }};
+        console.log(test_list);
 
         for (var idx in test_list) {
             tbody += '<tr><td>' + test_list[idx].group_id + '</td><td>' + test_list[idx].test_type + '</td><td>' + test_list[idx].submission_date + '</td><td>' + test_list[idx].enrolled + '</td><td>' + test_list[idx].poor + '</td><td>' + test_list[idx].good + '</td><td>' + test_list[idx].excellent + '</td></tr>';
