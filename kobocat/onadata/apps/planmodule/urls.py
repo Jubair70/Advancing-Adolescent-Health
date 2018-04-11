@@ -78,4 +78,5 @@ url(r'^getCommunityData/$', views.getCommunityData, name='getCommunityData'),
                        url(r'^submit-xml-data/$', views_api.submitXMLData),
                        url(r'^plan_mis_report/$', views_api.plan_mis_report),
                        url(r'^get_facility_by_upazila/$',views_api.get_facility_by_upazila),
+                       url(r'^get_session_list_by_group_type/$', views_api.get_session_list_by_group_type)
                        )
