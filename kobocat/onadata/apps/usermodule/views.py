@@ -1301,7 +1301,8 @@ def check_for_delete(request):
     df_child = pandas.read_sql(query_child, connection)
 
     extra_info= ""
-    if df_user.empty and df_org.empty and df_child.empty and parent_dependency_check_user(id) and parent_dependency_check_org(id):
+    # if df_user.empty and df_org.empty and df_child.empty and parent_dependency_check_user(id) and parent_dependency_check_org(id):
+    if df_user.empty and df_org.empty and df_child.empty:
         dependency = 0
     elif not df_user.empty:
         extra_info =df_user.username.tolist()[0]
@@ -1319,6 +1320,7 @@ def parent_dependency_check_user(geoid):
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
     parent_list = df.id.tolist()
+    print(parent_list)
 
     query = "select distinct geoid from usermodule_catchment_area"
     df = pandas.DataFrame()

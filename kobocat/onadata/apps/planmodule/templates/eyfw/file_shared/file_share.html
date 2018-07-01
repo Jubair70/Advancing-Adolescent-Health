@@ -5,7 +5,10 @@
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.29.0/mapbox-gl.css' rel='stylesheet'/>
     <style type="text/css">
 
-
+    .intial
+    {
+            border-color: #b94a48;
+    }
     </style>
 {% endblock %}
 
@@ -164,6 +167,13 @@
             $("#div_flash_messages").append("<div class='alert alert-" + data.type + " fade in'><a class='close' href='#' data-dismiss='alert'>×</a> <p>" + data.messages + "</p></div>");
     }
     $(document).on("submit", "#upload_data_form", function (event) {
+        $('#error_1_id_title').hide()
+        $('#error_1_id_shared_file').hide();
+        $('#div_id_title').removeClass('has-error');
+        $('#div_id_shared_file').removeClass('has-error');
+        
+
+
 console.log("submit file share");
 $('#load').append('<img style="height: 100px;width: 156px;" src="/static/images/loading_icon.gif">');
             event.preventDefault();

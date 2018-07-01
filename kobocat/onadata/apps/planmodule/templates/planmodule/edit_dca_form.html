@@ -3,11 +3,42 @@
 {% block additional-headers %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/semantic-ui/2.2.10/semantic.min.css">
     <link href="/static/css/calendar.min.css" rel="stylesheet" type="text/css"/>
+    <style type="text/css">
+         .modal
+     {
+      position: fixed;
+  top: 50%;
+  left: 10%;
+  
+     }
+        
+    </style>
 {% endblock %}
 
 
 {% block content %}
+<div class="modal" id="confirm-delete" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+         aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
 
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="myModalLabel">Alert</h4>
+                </div>
+
+                <div class="modal-body">
+                    <p>Do Not Select Same Activity More Than Once</p>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    
+                </div>
+            </div>
+        </div>
+        
+    </div>
     <div class="portlet box red">
         <div class="portlet-title">
             <div class="caption">
@@ -25,7 +56,7 @@
                     <div class="row">
                         <div class="col-md-5">
                             <div class="form-group">
-                                <label>Registraion Date: </label>
+                                <label>Registration Date: </label>
                                 <div class="ui calendar"  id="registration_date">
                                     <input type="text" class="form-control" name="registration_date" value="{{ registration_date }}"  readonly>
                                     <span style="color:red;font-weight:bold" id ="alert_date">No Date Selected</span>
@@ -40,16 +71,16 @@
                                 <label>Activity Level:&nbsp;&nbsp;</label>
                                 {% if activity_level == 1 %}
                                     <label class="radio-inline"><input type="radio" id="activity_level1" name="activity_level" value="1"
-                                                                       required checked>District</label>
+                                                                       required checked>Central</label>
                                 {% else %}
                                     <label class="radio-inline"><input type="radio" id="activity_level1" name="activity_level" value="1"
-                                                                       required>District</label>
+                                                                       required>Central</label>
                                 {% endif %}
                                 {% if activity_level == 2 %}
                                     <label class="radio-inline"><input type="radio" id="activity_level2" name="activity_level" value="2"
-                                                                       checked>Central</label>
+                                                                       checked>District</label>
                                 {% else %}
-                                    <label class="radio-inline"><input type="radio" id="activity_level2" name="activity_level" value="2">Central</label>
+                                    <label class="radio-inline"><input type="radio" id="activity_level2" name="activity_level" value="2">District</label>
                                 {% endif %}
                             </div>
                         </div>
@@ -64,10 +95,10 @@
                                     <select class="form-control" name="district" id="district"
                                             onclick="load_upazila(this)" >
                                         <option value="">Select One</option>
-                                        {% if district_id == 9329 %}
+                                        {% if district_id == 9377 %}
                                             <option value="{{ district_id }}" selected>{{ district_name }}</option>
                                         {% else %}
-                                            <option value="9329">Rangpur</option>
+                                            <option value="9377">Rangpur</option>
                                         {% endif %}
                                     </select>
                                 <span style="color:red;font-weight:bold" id ="alert_district">No District Selected</span>
@@ -193,6 +224,7 @@
             </form>
         </div>
     </div>
+
 {% endblock %}
 {% block additional-javascript %}
 {#    <script type="text/javascript" src="/static/js/bootstrap-datepicker.js"></script>#}
@@ -200,12 +232,30 @@
     <script type="text/javascript" src="/static/js/calendar.min.js"></script>
     <script type="text/javascript">
 
+        function centerModal() {
+        $(this).css('display', 'block');
+        var $dialog  = $(this).find(".modal-dialog"),
+        offset       = ($(window).height() - $dialog.height()) / 2,
+        bottomMargin = parseInt($dialog.css('marginBottom'), 10);
+
+        // Make sure you don't hide the top part of the modal w/ a negative margin if it's longer than the screen height, and keep the margin equal to the bottom margin of the modal
+        if(offset < bottomMargin) offset = bottomMargin;
+        $dialog.css("margin-top", offset);
+    }
+
+    $(document).on('show.bs.modal', '.modal', centerModal);
+    $(window).on("resize", function () {
+        $('.modal:visible').each(centerModal);
+    }); 
+
+
+
         $('#alert_date').hide();
 {#        $('#alert_activity').hide();#}
         $('#alert_district').hide();
         $('#alert_upazilla').hide();
         var activity_level = {{ activity_level|safe }};
-        if(activity_level ==1)
+        if(activity_level ==2)
             $('#level').show();
         else $('#level').hide();
 
@@ -237,14 +287,15 @@
 {#        for (var i=0;i<set_activity_id.length;i++) result.push(set_activity_id[i].toString());#}
 {#        $('#activity_name').dropdown('set selected',result);#}
 
-        $('#activity_level1').on('click',function () {
+        $('#activity_level2').on('click',function () {
             $('#level').show();
+            $('#district').html("<option value=\"\">Select One</option><option value=\"9377\">Rangpur</option>");
+             $('#upazilla').html("<option value=\"\">Select One</option>");
         });
 
-        $('#activity_level2').on('click',function () {
+        $('#activity_level1').on('click',function () {
             $('#level').hide();
-            $('#district').html("<option value=\"\">Select One</option><option value=\"9329\">Rangpur</option>");
-             $('#upazilla').html("<option value=\"\">Select One</option>");
+            
         });
 
 
@@ -265,8 +316,8 @@
 {#           }#}
 {#           else $('#alert_activity').hide();#}
 
-           activity_level1 = $('#activity_level1:checked').val();
-           if(activity_level1)
+           activity_level2 = $('#activity_level2:checked').val();
+           if(activity_level2)
            {
                district = $('#district').val();
                upazilla = $('#upazilla').val();
@@ -284,6 +335,22 @@
                else $('#alert_upazilla').hide();
 
            }
+
+
+           i_cnt = 0
+            all_ids = []
+            $("[id]").each(function(){
+                if($(this).attr("id")=="activity_name"){
+                    i_cnt++;
+                    all_ids.push($(this).val());
+                }
+            });
+            if(all_ids.length != $.unique(all_ids).length)
+            {
+                // $('#confirm-delete').show();
+                $('#confirm-delete').modal('toggle'); 
+                return false;
+            }
 
        });
 

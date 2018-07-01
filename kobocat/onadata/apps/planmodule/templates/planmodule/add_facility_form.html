@@ -68,6 +68,11 @@
                                     <option value="">Select One</option>
                                     <option value="1">FWC</option>
                                     <option value="2">CC</option>
+                                     <option value="3">MCWC</option>
+                                    <option value="4">UHC</option>
+                                    <option value="5">USC</option>
+                                     <option value="6">UH</option>
+
                                 </select>
                             </div>
                         </div>
@@ -90,6 +95,7 @@
                                 <label for="facilty_id">ID Number:</label>
                                 <input type="text" class="form-control" name="facility_id" id="facility_id"
                                         required>
+                                <span style="color:red;font-weight:bold" id ="alert_facility">Duplicate Facility ID Not Accepted</span>
                             </div>
                         </div>
                     </div>
@@ -129,6 +135,28 @@
     <script type="text/javascript" src="/static/js/bootstrap-datepicker.js"></script>
     <script>
 
+$('#alert_facility').hide();
+var facility_list = {{facility_list|safe}};
+// console.log(facility_list);
+$('#submit').on('click',function () {
+
+            var id = $('#facility_id').val();
+            // console.log(id);
+            if(facility_list.includes(id))
+            {
+                $('#alert_facility').show();
+                return false;
+            }
+
+            else {
+                
+                $('#alert_facility').hide();
+                return true;
+            }
+
+
+        });
+
 
         function ajaxcall() {
             $.ajaxSetup({
@@ -161,7 +189,7 @@
         function load_upazila(dist_object) {
             ajaxcall();
             dist = parseInt(dist_object.value)
-            console.log(dist);
+            // console.log(dist);
             if (isNaN(parseFloat(dist))) {
                 $('#upazila').html("<option value=\"\">Select One</option>");
             }
@@ -195,7 +223,7 @@
         function load_union(upz_object) {
             ajaxcall();
             upz = parseInt(upz_object.value)
-            console.log(upz);
+            // console.log(upz);
             if (isNaN(parseFloat(upz))) {
                 $('#union').html("<option value=\"\">Select One</option>");
             }

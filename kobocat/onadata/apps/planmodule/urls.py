@@ -80,14 +80,12 @@ url(r'^getCommunityData/$', views.getCommunityData, name='getCommunityData'),
                        url(r'^get_facility_by_upazila/$',views_api.get_facility_by_upazila),
 
 
-url(r'^eyfw/file_share/$', views.file_share,
-                           name='file_share'),
-                        url(r'^eyfw/getSharedFileList/$', views.getSharedFileList,
-                           name='getSharedFileList'),
-                        url(r'^eyfw/delete_sharedFile_data/(?P<id>[^/]+)/$', views.delete_sharedFile_data,
-                           name='delete_sharedFile_data'),
+                        url(r'^eyfw/file_share/$', views.file_share, name='file_share'),
+                        url(r'^eyfw/getSharedFileList/$', views.getSharedFileList, name='getSharedFileList'),
+                        url(r'^eyfw/delete_sharedFile_data/(?P<id>[^/]+)/$', views.delete_sharedFile_data, name='delete_sharedFile_data'),
 
 
+                        url(r'^analysis_report/$', views.analysis_report, name='analysis_report'),
 
                        url(r'^get_session_list_by_group_type/$', views_api.get_session_list_by_group_type)
 

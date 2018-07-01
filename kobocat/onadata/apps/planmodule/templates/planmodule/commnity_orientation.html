@@ -156,7 +156,7 @@
                                 name="pngo" ng-model="vms.model.pngo">
                             <option value="">-- Select --</option>
                             <option value="LAMB">LAMB</option>
-                            <option value="ESSDO">ESSDO</option>
+                            <option value="ESSDO">ESDO</option>
                         </select>
                         <span id="pngo_error" class="field_error"></span>
                     </div>
@@ -178,10 +178,10 @@
                                 class="input-group-btn"> <button
                                 data-ng-click="vms.openDatePicker($event,'isChangeDatePickerOpen1')"
                                 type="button" class="btn btn-default"> <i
-                                class="glyphicon glyphicon-calendar"></i></button></span> <span
-                                class="field_error"
-                                id="date_error"></span>
+                                class="glyphicon glyphicon-calendar"></i></button></span>
+
                         </div>
+                        <span class="field_error" id="date_error"></span>
                     </div>
 
 
@@ -632,6 +632,8 @@
                 }
             });
             var generatedXML = generateXML(inputStore, edit_instance_id);
+		console.log(generatedXML);
+
             return generatedXML
         };
 
@@ -640,8 +642,7 @@
             $("#loading").show();
             $("#dynamic_form").css('opacity', '0.4');
             xmltext = $scope.save();
-            //console.log(xmltext);
-            return false;
+
             if (req.upload_product) {
                 file = req.upload_product;
 
@@ -677,7 +678,7 @@
                         'Content-Type': 'application/x-www-form-urlencoded;'
                     }
                 }).success(function (data) {
-                    window.location.href = '/planmodule/commnity_orientation_form/'
+                    window.location.href = '/planmodule/community_orientation_list/'
                 });
             }
         }

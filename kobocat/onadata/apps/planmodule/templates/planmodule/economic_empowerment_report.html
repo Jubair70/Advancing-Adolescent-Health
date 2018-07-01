@@ -36,8 +36,9 @@
                         <label>PNGO:</label>
                         <select class="form-control" name="pngo" id="pngo">
                             <option value="">Select One</option>
-                            <option value="395">LAMB</option>
-                            <option value="396">EDSO</option>
+                            {% for org_id,org_name in organization %}
+                                <option value="{{ org_id }}">{{ org_name }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>
