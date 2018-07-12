@@ -1,54 +1,58 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from django.db import connection
+
 from collections import OrderedDict
-from django.http import HttpResponse
+import datetime
+import os
+import csv
+import xml.etree.ElementTree as ET
 import dateutil.parser
+import requests
+
+import simplejson as json
+import pandas as pd
+import pandas
+
+from django.http import HttpResponse
+from django.db import connection
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
-import simplejson as json
-import csv
 from django.shortcuts import render
-import os
 from django.core.files.storage import FileSystemStorage
-import pandas as pd
-import datetime
-import requests
-import xml.etree.ElementTree as ET
-import pandas
 from django.contrib import messages
+
 
 def __db_fetch_values(query):
     cursor = connection.cursor()
     cursor.execute(query)
-    fetchVal = cursor.fetchall()
+    fetch_val = cursor.fetchall()
     cursor.close()
-    return fetchVal
+    return fetch_val
 
 
 def __db_fetch_single_value(query):
     cursor = connection.cursor()
     cursor.execute(query)
-    fetchVal = cursor.fetchone()
+    fetch_val = cursor.fetchone()
     cursor.close()
-    return fetchVal[0]
+    return fetch_val[0]
 
 
 def __db_commit_query(query):
     cursor = connection.cursor()
     cursor.execute(query)
     connection.commit()
-    fetchval = cursor.fetchone()
+    fetch_val = cursor.fetchone()
     cursor.close()
-    return fetchval[0]
+    return fetch_val[0]
 
 
 def __db_fetch_values_dict(query):
     cursor = connection.cursor()
     cursor.execute(query)
-    fetchVal = dictfetchall(cursor)
+    fetch_val = dictfetchall(cursor)
     cursor.close()
-    return fetchVal
+    return fetch_val
 
 
 def __db_commit_query_void(query):
@@ -181,7 +185,7 @@ def get_adolescent_list(request):
 @csrf_exempt
 def get_cmp_list(request):
     username = request.GET.get('username')
-    cmp_query = "SELECT pngo, district,(select field_name from geo_data where geocode = district::text limit 1) as district_label, upazila,(select field_name from geo_data where geocode = upazila::text limit 1) as upazila_label, union_name,(select field_name from geo_data where geocode = union_name::text limit 1) as union_name_label, mouza, village,(select field_name from geo_data where geocode = village::text limit 1) as village_label, para,(select field_name from geo_data where geocode = para::text limit 1) as para_label, adolescent_name, id_adolescent, sex, father_name, mother_name, date_birth, birth_place, birth_reg, date_child_marriage_prevented, date_proposed_marriage, person_involved_prevent, username,(select case status when '2' then 'Married' when '1' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 1 limit 1) as vigilance_one_mon,(select case status when '2' then 'Married' when '1' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 2 limit 1) as vigilance_three_mon,(select case status when '2' then 'Married' when '1' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 3 limit 1) as status_at_eighteen FROM public.vw_cmp_registration vcr where union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"'))"
+    cmp_query = "SELECT data_id, pngo, district,(select field_name from geo_data where geocode = district::text limit 1) as district_label, upazila,(select field_name from geo_data where geocode = upazila::text limit 1) as upazila_label, union_name,(select field_name from geo_data where geocode = union_name::text limit 1) as union_name_label, mouza, village,(select field_name from geo_data where geocode = village::text limit 1) as village_label, para,(select field_name from geo_data where geocode = para::text limit 1) as para_label, adolescent_name, id_adolescent, sex, father_name, mother_name, date_birth, birth_place, birth_reg, date_child_marriage_prevented, date_proposed_marriage, person_involved_prevent, username,(select case status when '2' then 'Married' when '1' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 1 limit 1) as vigilance_one_mon,(select case status when '2' then 'Married' when '1' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 2 limit 1) as vigilance_three_mon,(select case status when '2' then 'Married' when '1' then 'Unmarried' end as status from vw_plan_vigilance where id_adolescent = vcr.id_adolescent and follow_up_type::int = 3 limit 1) as status_at_eighteen FROM public.vw_cmp_registration vcr where union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"'))"
     cmp_data = __db_fetch_values_dict(cmp_query)
     return HttpResponse(json.dumps(cmp_data))
 
@@ -189,7 +193,7 @@ def get_cmp_list(request):
 @csrf_exempt
 def get_lse_group_list(request):
     username = request.GET.get('username')
-    lse_grp_list_query = "SELECT row_number() OVER () as serial_no,data_id as group_id ,pngo, district, upazila, union_name, mouza, village, para,(select field_name from geo_data where geocode = district::text limit 1) as district_label, (select field_name from geo_data where geocode = upazila::text limit 1) as upazila_label, (select field_name from geo_data where geocode = union_name::text limit 1) as union_name_label, (select field_name from geo_data where geocode = village::text limit 1) as village_label, (select field_name from geo_data where geocode = para::text limit 1) as para_label, group_no, group_type,case group_type when '1' then '10-14 yr boys' when '2' then '10-14 yr girls' when '3' then '15-19 yr boys' when '4' then '15-19 yr girls' end as group_type_label,maritial_status,case maritial_status when '1'then 'Unmarried' when '2' then 'Married' end as maritial_status_label, username,(select count(*) from vw_grp_reg_sessions where group_id::int = vw_grp_registration.data_id) as no_of_sessions,((with t as(select group_id, unnest(string_to_array(adolescent_name, ' ')) as adolescent_name from vw_lse_grp_members) select count(*) from t where group_id::int = vw_grp_registration.data_id)) as no_of_adols FROM public.vw_grp_registration where union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"'))"
+    lse_grp_list_query = "SELECT row_number() OVER () as serial_no,data_id as group_id ,group_name,pngo, district, upazila, union_name, mouza, village, para,(select field_name from geo_data where geocode = district::text limit 1) as district_label, (select field_name from geo_data where geocode = upazila::text limit 1) as upazila_label, (select field_name from geo_data where geocode = union_name::text limit 1) as union_name_label, (select field_name from geo_data where geocode = village::text limit 1) as village_label, (select field_name from geo_data where geocode = para::text limit 1) as para_label, group_no, group_type,case group_type when '1' then '10-14 yr boys' when '2' then '10-14 yr girls' when '3' then '15-19 yr boys' when '4' then '15-19 yr girls' end as group_type_label,maritial_status,case maritial_status when '1'then 'Unmarried' when '2' then 'Married' end as maritial_status_label, username,(select count(*) from vw_grp_reg_sessions where group_id::int = vw_grp_registration.data_id) as no_of_sessions,((with t as(select group_id, unnest(string_to_array(adolescent_name, ' ')) as adolescent_name from vw_lse_grp_members) select count(*) from t where group_id::int = vw_grp_registration.data_id)) as no_of_adols,(select count(*) from vw_life_skill_education_test where test_type::int = 1 and group_id::int = data_id) as no_of_pre_test FROM public.vw_grp_registration where union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '"+str(username)+"'))"
     lse_grp_list_data = __db_fetch_values_dict(lse_grp_list_query)
     return HttpResponse(json.dumps(lse_grp_list_data))
 
@@ -197,7 +201,7 @@ def get_lse_group_list(request):
 @csrf_exempt
 def get_comm_orientation_list(request):
     username = request.GET.get('username')
-    comm_orientation_query = "SELECT row_number() OVER () as serial_no, date, case orientation_type When '1' then 'কমিউনিটি ওরিয়েন্টেশন' When '2' then 'ধর্মীয় নেতা' When '3' then 'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' When '4' then 'ইস্যুভিত্তিক মিটিং' end as orientation_type, count(data_id) as no_of_participants FROM public.vw_comm_orientation where union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
+    comm_orientation_query = "SELECT data_id,row_number() OVER () as serial_no, date, case orientation_type When '1' then 'কমিউনিটি ওরিয়েন্টেশন' When '2' then 'ধর্মীয় নেতা' When '3' then 'বিবাহিত কিশোরী / দম্পত্তি ওরিয়েন্টেশন' When '4' then 'ইস্যুভিত্তিক মিটিং' end as orientation_type, count(data_id) as no_of_participants FROM public.vw_comm_orientation where union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
         username) + "')) group by data_id,orientation_type,date order by date(date) DESC"
     comm_orientation_data = __db_fetch_values_dict(comm_orientation_query)
     return HttpResponse(json.dumps(comm_orientation_data))
@@ -206,7 +210,7 @@ def get_comm_orientation_list(request):
 @csrf_exempt
 def get_csa_list(request):
     username = request.GET.get('username')
-    csa_list_query = "select vcr.id_adolescent,(select adolescent_name from plan_adolescents_profile where id_adolescent = vcr.id_adolescent limit 1) as adolescent_name,to_char(business_start_month::date, 'Mon YYYY') as business_start_month from vw_csa_registration vcr where vcr.union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
+    csa_list_query = "select data_id, vcr.id_adolescent,(select adolescent_name from plan_adolescents_profile where id_adolescent = vcr.id_adolescent limit 1) as adolescent_name,to_char(business_start_month::date, 'Mon YYYY') as business_start_month from vw_csa_registration vcr where vcr.union_name :: text IN (SELECT (SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = (SELECT id FROM auth_user WHERE username = '" + str(
         username) + "'))"
     csa_list_data = __db_fetch_values_dict(csa_list_query)
     return HttpResponse(json.dumps(csa_list_data))
@@ -318,7 +322,7 @@ def get_session_list_group(request):
 @csrf_exempt
 def get_makeup_session_data(request):
     group_id = request.GET.get('group_id')
-    makeup_session_query = "with g as(with k as(with m as (select unnest(String_to_array(adolescent_name,' ')) as adolescent_name from vw_lse_grp_members where group_id::int = "+str(group_id)+"), n as(with t as(select json_array_elements(json::json->'choices'->'session') as sessions_list from logger_xform where id = 558) select sessions_list->>'name' as session_no from t where sessions_list->>'myfilter' = (select group_type from vw_grp_registration where data_id::int = "+str(group_id)+")) select session_no as sessionid,adolescent_name as adolescentid from m,n), q as (with t as(select session,unnest(String_to_array(adolescent_name,' ')) as adolescent_name from vw_grp_reg_sessions where group_id::int = "+str(group_id)+" union all select session,unnest(String_to_array(adolescent_name,' ')) as adolescent_name from vw_grp_mkp_sessions where group_id::int = "+str(group_id)+") select distinct session as sessionid,adolescent_name as adolescentid from t) select * from k except (select * from q)) select (select label from vw_sessions_list where name = sessionid limit 1) as sessionname,sessionid,(select adolescent_name from plan_adolescents_profile where id_adolescent = adolescentid limit 1) as adolescent,adolescentid from g"
+    makeup_session_query = "with f as(WITH g AS(WITH k AS(WITH m AS( SELECT Unnest(String_to_array(adolescent_name,' ')) AS adolescent_name FROM vw_lse_grp_members WHERE group_id::int = "+str(group_id)+"), n AS(WITH t AS ( SELECT Json_array_elements(json::json->'choices'->'session') AS sessions_list FROM logger_xform WHERE id = 558) SELECT sessions_list->>'name' AS session_no FROM t WHERE sessions_list->>'myfilter' = ( SELECT group_type FROM vw_grp_registration WHERE data_id::int = "+str(group_id)+")) SELECT session_no AS sessionid, adolescent_name AS adolescentid FROM m, n), q AS (WITH t AS ( SELECT session, Unnest(String_to_array(adolescent_name,' ')) AS adolescent_name FROM vw_grp_reg_sessions WHERE group_id::int = "+str(group_id)+" UNION ALL SELECT session, unnest(string_to_array(adolescent_name,' ')) AS adolescent_name FROM vw_grp_mkp_sessions WHERE group_id::int = "+str(group_id)+") SELECT DISTINCT session AS sessionid, adolescent_name AS adolescentid FROM t) SELECT * FROM k EXCEPT ( SELECT * FROM q)) SELECT ( SELECT label FROM vw_sessions_list WHERE NAME = sessionid limit 1) AS sessionname, sessionid, ( SELECT adolescent_name FROM plan_adolescents_profile WHERE id_adolescent = adolescentid limit 1) AS adolescent, adolescentid FROM g) select * from f where f.sessionid in (select session from vw_grp_reg_sessions where group_id::int = "+str(group_id)+")"
     makeup_session_data = __db_fetch_values(makeup_session_query)
 
     response = HttpResponse(content_type='text/csv')
@@ -495,7 +499,7 @@ def plan_mis_report(request):
             activity_month) + "' union all select 'IR3_1A_352' as subindicator_ach, COUNT(*) filter (where referral_cause::int >= 1 and referral_cause::int <=19 and age::int >=15 and age::int <= 19 and maritial_status::int = 1 and gender::int = 1) as male_boys_married_ach, COUNT(*) filter (where referral_cause::int >= 1 and referral_cause::int <=19 and age::int >=15 and age::int <= 19 and maritial_status::int = 3 and gender::int = 1) as male_boys_unmarried_ach, COUNT(*) filter (where referral_cause::int >= 1 and referral_cause::int <=19 and age::int >=15 and age::int <= 19 and maritial_status::int = 1 and gender::int = 2) as female_girls_married_ach, COUNT(*) filter (where referral_cause::int >= 1 and referral_cause::int <=19 and age::int >=15 and age::int <= 19 and maritial_status::int = 3 and gender::int = 2) as female_girls_unmarried_ach from vw_referral_reg_unnest where refferal_date::text like '" + str(
             activity_month) + "' union all select 'IR1_1A_111' as subindicator_ach, sum(session_count) filter(where maritial_status::int = 1 and group_type::int = 1) as male_boys_married_ach, sum(session_count) filter (where maritial_status::int = 2 and group_type::int = 1) as male_boys_unmarried_ach, sum(session_count) filter (where maritial_status::int = 1 and group_type::int = 2) as female_girls_married_ach, sum(session_count) filter (where maritial_status::int = 2 and group_type::int = 2) as female_girls_unmarried_ach from vw_grp_adol_session_counter where session_date like '" + str(
             activity_month) + "' union all select 'IR1_1A_112' as subindicator_ach, sum(session_count) filter (where maritial_status::int = 1 and group_type::int = 3) as male_boys_married_ach, sum(session_count) filter (where maritial_status::int = 2 and group_type::int = 3) as male_boys_unmarried_ach, sum(session_count) filter (where maritial_status::int = 1 and group_type::int = 4) as female_girls_married_ach, sum(session_count) filter (where maritial_status::int = 2 and group_type::int = 4) as female_girls_unmarried_ach from vw_grp_adol_session_counter where session_date like '" + str(
-            activity_month) + "') select subindicator_ach,COALESCE(male_boys_married_ach,0) male_boys_married_ach,COALESCE(male_boys_unmarried_ach,0) male_boys_unmarried_ach,COALESCE(female_girls_married_ach,0) female_girls_married_ach,COALESCE(female_girls_unmarried_ach,0) female_girls_unmarried_ach, COALESCE(female_girls_unmarried_ach,0) + COALESCE(male_boys_unmarried_ach,0) + COALESCE(female_girls_married_ach,0) + COALESCE(female_girls_unmarried_ach,0) as total_ach from total"
+            activity_month) + "') select subindicator_ach,COALESCE(male_boys_married_ach,0) male_boys_married_ach,COALESCE(male_boys_unmarried_ach,0) male_boys_unmarried_ach,COALESCE(female_girls_married_ach,0) female_girls_married_ach,COALESCE(female_girls_unmarried_ach,0) female_girls_unmarried_ach, COALESCE(female_girls_unmarried_ach,0) + COALESCE(male_boys_unmarried_ach,0) + COALESCE(female_girls_married_ach,0) + COALESCE(male_boys_married_ach,0) as total_ach from total"
         monthly_achievement_data = json.dumps(__db_fetch_values_dict(monthly_achievement_query))
         sc_ma_query = "with t as(select 'IR1_2A_141' as subindicator_ach, count(*) as total_ach from vw_comm_orientation where orientation_type::int = 1 and community_representative_type::int = 1 and date like '" + str(
             activity_month) + "' union all select 'IR1_2A_142' as subindicator_ach, count(*) as total_ach from vw_comm_orientation where orientation_type::int = 1 and community_representative_type::int = 2 and date like '" + str(
@@ -601,7 +605,8 @@ def submitXMLData(request):
 @csrf_exempt
 def get_referrals_list(request):
     username = request.GET.get('username')
-    referral_list_query = "with m as(with t as(select value_text,value_label from xform_extracted where xform_id = 534 and field_name = 'referral_cause'), q as(select value_text,value_label from xform_extracted where xform_id = 534 and field_name = 'referral_place'), s as(select data_id as referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others, unnest(string_to_array(referral_cause,' ')) as referral_cause, referral_cause_other, refferer_name, username from vw_plan_referral_reg WHERE union_name :: text IN ( SELECT ( SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = ( SELECT id FROM auth_user WHERE username = '"+str(username)+"'))) select referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, case gender when '1' then 'Male' when '2' then 'Female' end as gender, case maritial_status when '1' then 'Unmarried' when '2' then 'Married' when '3' then 'Newly Married' end as maritial_status, refferal_date, q.value_label as referral_place, referral_place_others,t.value_label as referral_cause, referral_cause_other, refferer_name, username from t,s,q where t.value_text = s.referral_cause and q.value_text = s.referral_place) select referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others,string_agg(referral_cause,', ') as referral_cause, referral_cause_other, refferer_name, username from m group by referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others,referral_cause_other, refferer_name, username order by referral_id DESC"
+    #referral_list_query = "with m as(with t as(select value_text,value_label from xform_extracted where xform_id = 534 and field_name = 'referral_cause'), q as(select value_text,value_label from xform_extracted where xform_id = 534 and field_name = 'referral_place'), s as(select data_id as referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others, unnest(string_to_array(referral_cause,' ')) as referral_cause, referral_cause_other, refferer_name, username from vw_plan_referral_reg WHERE union_name :: text IN ( SELECT ( SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = ( SELECT id FROM auth_user WHERE username = '"+str(username)+"'))) select referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, case gender when '1' then 'Male' when '2' then 'Female' end as gender, case maritial_status when '1' then 'Unmarried' when '2' then 'Married' when '3' then 'Newly Married' end as maritial_status, refferal_date, q.value_label as referral_place, referral_place_others,t.value_label as referral_cause, referral_cause_other, refferer_name, username from t,s,q where t.value_text = s.referral_cause and q.value_text = s.referral_place) select referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others,string_agg(referral_cause,', ') as referral_cause, referral_cause_other, refferer_name, username from m group by referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others,referral_cause_other, refferer_name, username order by referral_id DESC"
+    referral_list_query = "with m as(with t as(select value_text,value_label from xform_extracted where xform_id = 534 and field_name = 'referral_cause'), q as(select value_text,value_label from xform_extracted where xform_id = 534 and field_name = 'referral_place'), s as(select data_id as referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others, unnest(string_to_array(referral_cause,' ')) as referral_cause, referral_cause_other, refferer_name, username from vw_plan_referral_reg WHERE union_name :: text IN ( SELECT ( SELECT geocode FROM geo_data WHERE id = geoid) FROM usermodule_catchment_area WHERE user_id = ( SELECT id FROM auth_user WHERE username = '"+str(username)+"'))) select referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, case gender when '1' then 'Male' when '2' then 'Female' end as gender, case maritial_status when '1' then 'Unmarried' when '2' then 'Married' when '3' then 'Newly Married' end as maritial_status, refferal_date, q.value_label as referral_place, referral_place_others,t.value_label as referral_cause, referral_cause_other, refferer_name, username from t,s,q where t.value_text = s.referral_cause and q.value_text = s.referral_place) select referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others,string_agg(referral_cause,', ') as referral_cause, referral_cause_other, refferer_name, username from m where referral_id::text not in (select id_followup from public.vw_referral_followup) group by referral_id, pngo, district, upazila, union_name, village, para, hh_no, hh_head, adolescent_name, id_adolescent, age, gender, maritial_status, refferal_date, referral_place, referral_place_others,referral_cause_other, refferer_name, username order by referral_id DESC"
     referral_list_data = __db_fetch_values_dict(referral_list_query)
     return HttpResponse(json.dumps(referral_list_data))
 
