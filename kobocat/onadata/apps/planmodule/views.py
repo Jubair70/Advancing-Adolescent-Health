@@ -106,6 +106,175 @@ def decimal_date_default(obj):
 def index(request):
     return render(request, 'planmodule/index.html')
 
+@login_required
+def dashboard(request):
+    # Rectangle Count
+    query = "with enrol as(with t as ( select date_submitted::date,array_length(string_to_array(adolescent_name,' '),1)::int enroll from vw_lse_grp_members) select sum(enroll)::int enrolled from t), all_ses_cnt as (with m as(with q as( with t as ( select count(*) as c, group_id, group_type from vw_grp_reg_sessions group by group_id, group_type) select * from t where group_type::int in ( 1, 3) and c = 5 union all select * from t where group_type::int in ( 2, 4 ) and c = 8 ), p as (select unnest(string_to_array( adolescent_name, ' ' )) as adolescent_id, group_id from vw_grp_reg_sessions ), z as (with s as ( with k as ( select distinct on ( session, id_adolescent ) * from vw_grp_all_sessions) select count(*) as c, id_adolescent, group_type from k group by id_adolescent, group_type ) select id_adolescent from s where ( s.c > 4 and group_type::int in ( 1, 3 )) or ( s.c > 7 and group_type::int in ( 2, 4 ))) select distinct p.adolescent_id from q, p where p.group_id in ( select group_id from q ) and p.adolescent_id in ( select id_adolescent from z )) select count( adolescent_id )::int as no_of_adol_com_all_ses from m), referrel as (select count(*)::int refer from vw_plan_referral_reg) ,ref_fol as (select count(*)::int ref_fol from vw_referral_followup)select  coalesce(enrolled,0) enrolled,no_of_adol_com_all_ses all_ses_cnt,refer referrel,ref_fol from enrol,all_ses_cnt,referrel,ref_fol"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query,connection)
+    enrolled = df.enrolled.tolist()[0]
+    all_ses_cnt = df.all_ses_cnt.tolist()[0]
+    referrel = df.referrel.tolist()[0]
+    ref_fol = df.ref_fol.tolist()[0]
+
+
+    # Map
+    query_for_map_data = "with t as(select json->>'upazila' upazila,json_array_elements((json->>'ado_info')::json) ado_info from logger_instance where xform_id = 549 and deleted_at is null)select (select field_name from geo_data where geocode = upazila) upazila_name,count(*)::int ado_total from t group by upazila_name"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_map_data,connection)
+
+    stat = 0
+    min_range = []
+    max_range = []
+    if not df.empty:
+        stat = 1
+        min_val = min(df.ado_total.tolist())
+        max_val = max(df.ado_total.tolist())
+        if min_val == max_val:
+            min_val = 0
+        range = (max_val - min_val)/8
+
+        temp_min = min_val
+        temp_max = min_val + range
+
+        i = 0
+        while i<8:
+            min_range.append(temp_min)
+            max_range.append(temp_max)
+            temp_min = temp_max + 1
+            temp_max = temp_min + range
+            i = i + 1
+
+
+    result_json = []
+    file = open("onadata/media/all_geojson/rangpur.geojson", 'r')
+    json_content = file.read()
+    file.close()
+    json_content = json.loads(json_content)['features']
+    print(min_range)
+    print(max_range)
+
+    for each in json_content:
+        if not df[df['upazila_name']==each['properties']['Upazila']]['ado_total'].empty:
+            each['properties']['ado_total'] = df[df['upazila_name']==each['properties']['Upazila']]['ado_total'].tolist()[0]
+            each['properties']['color'] = color_range(min_range,max_range,each['properties']['ado_total'])
+        else:
+            each['properties']['ado_total'] = 0
+            each['properties']['color'] = color_range(min_range, max_range, each['properties']['ado_total'])
+
+
+    query_for_table = "select 'LSE completed' as event,count(*) total_session from vw_grp_reg_sessions union all select 'Issue Specific meeting participants' as event,count(*) total_session from vw_comm_orientation where orientation_type::int = 4 union all select 'TFD shows' as event,count(*) total_session from plan_mis_report_district_form where activity_id in('IR2_4C_32','IR3_2A_38') union all select 'Orientation for married adolescents' as event,count(*) total_session from vw_comm_orientation where orientation_type::int = 3 union all select 'Orientation for change agents' as event,count(*) total_session from plan_mis_report_district_form where activity_id in ('IR2_3C_28','IR2_3C_29') union all select 'Positive deviant couples' as event,count(*) total_session from vw_comm_orientation where married_adolescent_or_couple_type::int = 2 union all select 'Exposure visit participants' as event,count(*) total_session from vw_cf_miscellaneous_activity where activity_name = 'IR2_4A_30' union all (with t as ( select json->>'id_adolescent' counts from logger_instance where xform_id = 540 and deleted_at is null) select 'No of child marriage prevented' as event, count(counts) total_session from t) union all select 'Community score cards ' as event,count(*) total_session from plan_scorecard union all select 'School based programs by guest speakers' as event,count(*) total_session from vw_cf_miscellaneous_activity where activity_name = 'IR3_3F_51' union all select 'School based programs by teachers' as event,count(*) total_session from vw_cf_miscellaneous_activity where activity_name = 'IR3_3F_53'"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_table,connection)
+    total_session = df.total_session.tolist()
+
+    query_for_adol_count_chart = "with t as( select group_type,sum(array_length(string_to_array(adolescent_name, ' '),1)::int) total from vw_lse_grp_members group by group_type),t1 as(select sum(total) all_total from t), t3 as ( select '1' group_type union select '2' group_type union select '3' group_type union select '4' group_type ), tt as( select group_type,round(total*100/all_total,0) percentage from t,t1 ) select t3.group_type,coalesce(percentage,0) percentage from t3 left outer join tt on t3.group_type = tt.group_type order by group_type"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_adol_count_chart, connection)
+    adolescent_percentage = df.percentage.tolist()
+
+    query_for_adol_service = "with t as( select referral_place,count(*) total from vw_referral_followup where got_service::int = 1 group by referral_place),t1 as (select sum(total) all_total from t), t3 as ( select 'Maternal and Child Welfare Center (MCWC)' as referral_place union all select 'Upazila Health Complex (UHC)' as referral_place union all select 'Union Health and Family Welfare Center (UHFWC)' as referral_place union all select 'Rural Dispensary (RD)' as referral_place union all select 'Family Welfare Center (FWC)' as referral_place union all select 'Community Clinic (CC)' as referral_place union all select 'Surjer Hashi Clinics' as referral_place union all select 'SMC Blue Star Center' as referral_place union all select 'Others' as referral_place ), tt as ( select referral_place,round(total*100/all_total,0) percentage from t,t1 )select t3.referral_place,coalesce(percentage,0) percentage from t3 left join tt on t3.referral_place = tt.referral_place order by referral_place"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_adol_service, connection)
+    adolescent_serv_percentage = df.percentage.tolist()
+    return render(request, 'planmodule/dashboard.html',{'adolescent_serv_percentage':adolescent_serv_percentage,'adolescent_percentage':adolescent_percentage,'total_session':total_session,'result_json': json.dumps(json_content),'enrolled':enrolled
+                                                        ,'all_ses_cnt':all_ses_cnt,
+                                                        'referrel':referrel,
+                                                        'ref_fol':ref_fol,'min_range':min_range,'max_range':max_range,'stat':stat})
+
+
+def color_range(min_range,max_range,cnt):
+    colors = ['#b2b2ff','#9999ff','#7f7fff','#6666ff','#4c4cff','#3232ff','#1919ff','#0000ff']
+    i = 0
+    while i<8 and len(min_range) and len(max_range):
+        if cnt >= min_range[i] and cnt <= max_range[i]:
+            return colors[i]
+        i = i + 1
+    return colors[0]
+
+
+@login_required
+def getDashboardData(request):
+    from_date = request.POST.get('from_date')
+    to_date = request.POST.get('to_date')
+    query = "with enrol as(with t as ( select date_submitted::date,array_length(string_to_array(adolescent_name,' '),1)::int enroll from vw_lse_grp_members where date_submitted between '"+str(from_date)+"' and '"+str(to_date)+"') select sum(enroll)::int enrolled from t), all_ses_cnt as (with m as(with q as( with t as ( select count(*) as c, group_id, group_type from vw_grp_reg_sessions group by group_id, group_type) select * from t where group_type::int in ( 1, 3) and c = 5 union all select * from t where group_type::int in ( 2, 4 ) and c = 8 ), p as (select unnest(string_to_array( adolescent_name, ' ' )) as adolescent_id, group_id from vw_grp_reg_sessions ), z as (with s as ( with k as ( select distinct on ( session, id_adolescent ) * from vw_grp_all_sessions where session_date::date between '"+str(from_date)+"' and '"+str(to_date)+"') select count(*) as c, id_adolescent, group_type from k group by id_adolescent, group_type ) select id_adolescent from s where ( s.c > 4 and group_type::int in ( 1, 3 )) or ( s.c > 7 and group_type::int in ( 2, 4 ))) select distinct p.adolescent_id from q, p where p.group_id in ( select group_id from q ) and p.adolescent_id in ( select id_adolescent from z )) select count( adolescent_id )::int as no_of_adol_com_all_ses from m), referrel as (select count(*)::int refer from vw_plan_referral_reg where refferal_date::date between '"+str(from_date)+"' and '"+str(to_date)+"') ,ref_fol as (select count(*)::int ref_fol from vw_referral_followup where refferal_date::date between '"+str(from_date)+"' and '"+str(to_date)+"')select coalesce(enrolled,0) enrolled,no_of_adol_com_all_ses all_ses_cnt,refer referrel,ref_fol from enrol,all_ses_cnt,referrel,ref_fol"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query, connection)
+    enrolled = df.enrolled.tolist()[0]
+    all_ses_cnt = df.all_ses_cnt.tolist()[0]
+    referrel = df.referrel.tolist()[0]
+    ref_fol = df.ref_fol.tolist()[0]
+
+    # Map
+    query_for_map_data = "with t as (select json->>'upazila' upazila,json_array_elements((json->>'ado_info')::json)  ado_info from logger_instance where xform_id = 549 and deleted_at is null and (json->>'start')::date between '"+str(from_date)+"' and '"+str(to_date)+"')select (select field_name from geo_data where geocode = upazila) upazila_name,count(*)::int ado_total from t group by upazila_name"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_map_data, connection)
+
+    stat = 0
+    min_range = []
+    max_range = []
+    if not df.empty:
+        stat = 1
+        min_val = min(df.ado_total.tolist())
+        max_val = max(df.ado_total.tolist())
+        if min_val == max_val:
+            min_val = 0
+        range = (max_val - min_val) / 8
+
+        temp_min = min_val
+        temp_max = min_val + range
+
+        i = 0
+        while i < 8:
+            min_range.append(temp_min)
+            max_range.append(temp_max)
+            temp_min = temp_max + 1
+            temp_max = temp_min + range
+            i = i + 1
+
+    result_json = []
+    file = open("onadata/media/all_geojson/rangpur.geojson", 'r')
+    json_content = file.read()
+    file.close()
+    json_content = json.loads(json_content)['features']
+
+    for each in json_content:
+        if not df[df['upazila_name'] == each['properties']['Upazila']]['ado_total'].empty:
+            each['properties']['ado_total'] = \
+            df[df['upazila_name'] == each['properties']['Upazila']]['ado_total'].tolist()[0]
+            each['properties']['color'] = color_range(min_range, max_range, each['properties']['ado_total'])
+        else:
+            each['properties']['ado_total'] = 0
+            each['properties']['color'] = color_range(min_range, max_range, each['properties']['ado_total'])
+
+    query_for_table = "SELECT 'LSE completed' AS event, Count(*) total_session FROM vw_grp_reg_sessions where session_date between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL SELECT 'Issue Specific meeting participants' AS event, Count(*) total_session FROM vw_comm_orientation where orientation_type :: INT = 4 and \"date\" between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL SELECT 'TFD shows' AS event, Count(*) total_session FROM plan_mis_report_district_form WHERE activity_id IN( 'IR2_4C_32', 'IR3_2A_38') and activity_date::date between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL SELECT 'Orientation for married adolescents' AS event, Count(*) total_session FROM vw_comm_orientation WHERE orientation_type :: INT = 3 and \"date\" between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL SELECT 'Orientation for change agents' AS event, Count(*) total_session FROM plan_mis_report_district_form WHERE activity_id IN( 'IR2_3C_28', 'IR2_3C_29' ) and activity_date::date between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL SELECT 'Positive deviant couples' AS event, Count(*) total_session FROM vw_comm_orientation WHERE married_adolescent_or_couple_type :: INT = 2 and \"date\" between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL SELECT 'Exposure visit participants' AS event, Count(*) total_session FROM vw_cf_miscellaneous_activity WHERE activity_name = 'IR2_4A_30' and activity_date::date between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL ( WITH t AS (SELECT json ->> 'id_adolescent' counts FROM logger_instance WHERE xform_id = 540 AND deleted_at IS null and (json->>'date_child_marriage_prevented')::date between '"+str(from_date)+"' and '"+str(to_date)+"') SELECT 'No of child marriage prevented' AS event, Count(counts) total_session FROM t) UNION ALL SELECT 'Community score cards ' AS event, Count(*) total_session FROM plan_scorecard where execution_date::date between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL SELECT 'School based programs by guest speakers' AS event, Count(*) total_session FROM vw_cf_miscellaneous_activity WHERE activity_name = 'IR3_3F_51' and activity_date::date between '"+str(from_date)+"' and '"+str(to_date)+"' UNION ALL SELECT 'School based programs by teachers' AS event, Count(*) total_session FROM vw_cf_miscellaneous_activity WHERE activity_name = 'IR3_3F_53' and activity_date::date between '"+str(from_date)+"' and '"+str(to_date)+"'"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_table, connection)
+    total_session = df.total_session.tolist()
+
+    query_for_adol_count_chart = "WITH t AS( SELECT group_type, Sum(Array_length(String_to_array(adolescent_name, ' '),1)::int) total FROM vw_lse_grp_members where date_submitted::date between '"+str(from_date)+"' and '"+str(to_date)+"' GROUP BY group_type),t1 AS ( SELECT Sum(total) all_total FROM t), t3 AS ( SELECT '1' group_type UNION SELECT '2' group_type UNION SELECT '3' group_type UNION SELECT '4' group_type), tt AS ( SELECT group_type, Round(total*100/all_total,0) percentage FROM t, t1 ) SELECT t3.group_type, COALESCE(percentage,0) percentage FROM t3 LEFT OUTER JOIN tt ON t3.group_type = tt.group_type ORDER BY group_type;"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_adol_count_chart, connection)
+    adolescent_percentage = df.percentage.tolist()
+
+    query_for_adol_service = "WITH t AS( SELECT referral_place, Count(*) total FROM vw_referral_followup WHERE got_service::int = 1 and follow_up_date::date between '"+str(from_date)+"' and '"+str(to_date)+"' GROUP BY referral_place),t1 AS ( SELECT Sum(total) all_total FROM t), t3 AS ( SELECT 'Maternal and Child Welfare Center (MCWC)' AS referral_place UNION ALL SELECT 'Upazila Health Complex (UHC)' AS referral_place UNION ALL SELECT 'Union Health and Family Welfare Center (UHFWC)' AS referral_place UNION ALL SELECT 'Rural Dispensary (RD)' AS referral_place UNION ALL SELECT 'Family Welfare Center (FWC)' AS referral_place UNION ALL SELECT 'Community Clinic (CC)' AS referral_place UNION ALL SELECT 'Surjer Hashi Clinics' AS referral_place UNION ALL SELECT 'SMC Blue Star Center' AS referral_place UNION ALL SELECT 'Others' AS referral_place), tt AS ( SELECT referral_place, Round(total*100/all_total,0) percentage FROM t, t1 ) SELECT t3.referral_place, COALESCE(percentage,0) percentage FROM t3 LEFT JOIN tt ON t3.referral_place = tt.referral_place ORDER BY referral_place"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_adol_service, connection)
+    adolescent_serv_percentage = df.percentage.tolist()
+    data = json.dumps({'enrolled': enrolled,
+                       'all_ses_cnt': all_ses_cnt,
+                       'referrel': referrel,
+                       'ref_fol': ref_fol,
+                       'result_json': json.dumps(json_content),
+                       'min_range':min_range,
+                       'max_range':max_range,
+                       'total_session':total_session,
+                       'adolescent_percentage': adolescent_percentage,
+                       'adolescent_serv_percentage':adolescent_serv_percentage
+                       })
+    return HttpResponse(data)
+
+
 
 def get_recursive_organization_children(organization, organization_list=[]):
     organization_list.append(organization)
@@ -280,6 +449,14 @@ def getUpazilas(request):
 def getUnions(request):
     upazila = request.POST.get('upz')
     union_query = "select geocode as id,field_name from geo_data where field_type_id = 89 and field_parent_id = (select id from geo_data where geocode = '"+str(upazila)+"')"
+    union_data = json.dumps(__db_fetch_values_dict(union_query))
+    return HttpResponse(union_data)
+
+def getUnions_asd(request):
+    upazila = json.loads(request.POST.get('upz'))
+    upazila = str(map(int, upazila))
+    upazila = upazila.replace('[','').replace(']','').replace(' ', '')  
+    union_query = "select geocode as id,field_name from geo_data where field_type_id = 89 and field_parent_id = any(select id from geo_data where geocode = any(string_to_array('"+str(upazila)+"',',')))"
     union_data = json.dumps(__db_fetch_values_dict(union_query))
     return HttpResponse(union_data)
 
@@ -562,7 +739,7 @@ def getScoreCardData(request):
     else:
         filter_query += " and pngo_id in " + str(org)
     query = "select id,(select field_name from public.geo_data where id = district limit 1) district,(select field_name from public.geo_data where id = upazilla limit 1) upazilla,DATE(execution_date) execution_date,(select facilty_name from public.plan_facilities where facilty_id::int = facility_id limit 1) facility_name,case when facility_type = 1 then 'FWCC' else 'CC' end facility_type,average_score_adolescents,average_score_service_providers,major_comments_adolescents,major_comments_service_providers from public.plan_scorecard "+str(filter_query)
-    print(query)
+    # print(query)
     scorecard_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     return HttpResponse(scorecard_list)
 
@@ -821,7 +998,7 @@ def test_report(request):
             union_name = df.field_name.tolist()
             union = zip(union_id, union_name)
 
-            query = "with recursive t as( select id,field_name,field_type_id from geo_data where id = (select geoid from usermodule_catchment_area where user_id = "+str(request.user.id)+") union all select geo_data.id,geo_data.field_name,geo_data.field_type_id from geo_data,t where geo_data.field_parent_id = t.id)select id,username from auth_user where id in (select user_id from usermodule_catchment_area k where k.geoid in (select id from t where field_type_id = 89))"
+            query = "with recursive t as( select id,field_name,field_type_id from geo_data where id = (select geoid from usermodule_catchment_area where user_id = "+str(request.user.id)+") union all select geo_data.id,geo_data.field_name,geo_data.field_type_id from geo_data,t where geo_data.field_parent_id = t.id)select id::int,username from auth_user where id in (select user_id from usermodule_catchment_area k where k.geoid in (select id from t where field_type_id = 89))"
             df = pandas.DataFrame()
             df = pandas.read_sql(query, connection)
             user_id = df.id.tolist()
@@ -872,30 +1049,35 @@ def getTestData(request):
         current_user = current_user[0]
     all_organizations = get_recursive_organization_children(current_user.organisation_name, [])
     org_id_list = [org.pk for org in all_organizations]
-    org = str(map(str, org_id_list))
-    org = org.replace('[', '(').replace(']', ')')
+    org = str(map(int, org_id_list))
+    org = org.replace('[', '').replace(']', '').replace(' ','')
+
 
     from_date = request.POST.get('from_date')
     to_date = request.POST.get('to_date')
-    upazila = request.POST.get('upazila')
-    union = request.POST.get('union')
-    pngo = request.POST.get('pngo')
-    username = request.POST.get('username')
-    group = request.POST.get('group')
-    test_type = request.POST.get('test_type')
-    marital_status = request.POST.get('marital_status')
-    session = request.POST.get('session')
+    upazila = json.loads(request.POST.get('upazila'))
+    union = json.loads(request.POST.get('union'))
+    pngo = json.loads(request.POST.get('pngo'))
+    username = json.loads(request.POST.get('username'))
+    group = json.loads(request.POST.get('group'))
+    test_type = json.loads(request.POST.get('test_type'))
+    marital_status = json.loads(request.POST.get('marital_status'))
+    session = json.loads(request.POST.get('session'))
 
     filter_query = "where  submission_date between '" + str(from_date) + "' and '" + str(to_date) + "'"
-    if len(group)!=0:
-        if len(group) == 1:
-            filter_query += " and group_type::int = " + str(group)
-        elif len(group) == 2:
-            group = "("+group[0]+","+group[1]+")"
-            filter_query += " and group_type::int in " + str(group)
+
+
+    if group != "":
+        group = str(map(int, group))
+        group = group.replace('[', '').replace(']', '').replace(' ', '')
+        filter_query += " and group_type = any(string_to_array('" + str(group) + "',',')) "
+
+
 
     if upazila !="":
-        filter_query += " and upazilla_geocode = '"+str(upazila)+"'"
+        upazila = str(map(int, upazila))
+        upazila = upazila.replace('[', '').replace(']', '').replace(' ', '')
+        filter_query += " and upazilla_geocode::text = any(string_to_array('" + str(upazila) + "',',')) "
     else:
         query = "select geoid,(select field_type_id from geo_data where id = geoid),(select geocode from geo_data where id = geoid) from usermodule_catchment_area where user_id = "+str(request.user.id)
         df = pandas.DataFrame()
@@ -908,28 +1090,48 @@ def getTestData(request):
             filter_query += " and district_geocode = '" + str(district_geocode)+"'"
 
     if pngo !="":
-        filter_query += " and pngo_id = '"+str(pngo)+"'"
+        pngo = str(map(int,pngo))
+        pngo = pngo.replace('[', '').replace(']', '').replace(' ','')
+        filter_query += " and pngo_id::text = any(string_to_array('"+str(pngo)+"',',')) "
     else:
-        filter_query += " and pngo_id in " + str(org)            
+        filter_query += " and pngo_id::text = any(string_to_array('"+str(org)+"',',')) "
+
     if union!="":
-        filter_query += " and union_geocode = '" + str(union)+"'"
+        union = str(map(int, union))
+        union = union.replace('[', '').replace(']', '').replace(' ', '')
+        filter_query += " and union_geocode::text = any(string_to_array('" + str(union) + "',',')) "
+
     if username!="":
-        filter_query += " and username = (select username from auth_user where id ="+ str(username)+")"
+        print(username)
+        username = str(map(str, username))
+        # username = json.dumps(username)
+        # print(username)
+        username = username.replace('[', '').replace(']', '').replace('\'', '')
+        print(username)
+        filter_query += " and username = any(string_to_array('" + str(username) + "',',')) "
+
+
 
     if test_type!="":
-        filter_query += " and test_type::int = " + str(test_type)
+        test_type = str(map(int, test_type))
+        test_type = test_type.replace('[', '').replace(']', '').replace(' ', '')
+        filter_query += " and test_type = any(string_to_array('" + str(test_type) + "',',')) "
+
     if marital_status!="":
-        filter_query += " and maritial_status::int = " + str(marital_status)
+        marital_status = str(map(int, marital_status))
+        marital_status = marital_status.replace('[', '').replace(']', '').replace(' ', '')
+        filter_query += " and maritial_status = any(string_to_array('" + str(marital_status) + "',',')) "
     session_query = ""
     if session!="":
-        session_query += " having count(*) = " + str(session)
+        session = str(map(int, session))
+        session = session.replace('[', '').replace(']', '').replace(' ', '')
+        session_query += " having count(*)::text = any(string_to_array('" + str(session) + "',','))"
 
     query = "with t as( SELECT username,(select id user_id from auth_user where username=vw_life_skill_education_test.username), village_geocode, village_name, union_geocode, union_name, upazilla_geocode, upazilla_name, district_geocode, district_name, group_type, maritial_status, submission_date, test_type, group_id, adolescent_name, id_adolescent, number_obtained,case when number_obtained::int <=5 then 1 else 0 end poor,case when number_obtained::int >=6 and number_obtained::int <=9 then 1 else 0 end good,case when number_obtained::int >=10 then 1 else 0 end excellent FROM public.vw_life_skill_education_test "+str(filter_query)+"), t1 as( select group_id,count(*) sessions from vw_grp_reg_sessions  group by group_id "+str(session_query)+")select group_id,case when test_type='1' then 'Pre' else 'Post' end test_type,submission_date,count(adolescent_name) enrolled,sum(poor) poor,sum(good) good,sum(excellent) excellent from t where group_id in (select group_id from t1) group by submission_date,test_type,group_id"
-    
-    test_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
+    print(query)
 
+    test_list = json.dumps(__db_fetch_values_dict(query), default=decimal_date_default)
     query_for_chart = "with t as( SELECT username, village_geocode, village_name, union_geocode, union_name, upazilla_geocode, upazilla_name, district_geocode, district_name, group_type, maritial_status, submission_date, test_type, group_id, adolescent_name, id_adolescent, number_obtained,case when number_obtained::int <=5 then 1 else 0 end poor,case when number_obtained::int >=6 and number_obtained::int <=9 then 1 else 0 end good,case when number_obtained::int >=10 then 1 else 0 end excellent FROM public.vw_life_skill_education_test "+str(filter_query)+"), t1 as( select group_id,count(*) sessions from vw_grp_reg_sessions  group by group_id "+str(session_query)+")select test_type,sum(poor) poor,sum(good) good,sum(excellent) excellent from t where group_id in (select group_id from t1) group by test_type order by test_type"
-    
     df = pandas.DataFrame()
     df = pandas.read_sql(query_for_chart, connection)
     pretest = []
@@ -1575,8 +1777,6 @@ def delete_sharedFile_data(request,id):
     return HttpResponse(simplejson.dumps(data), content_type="application/json")
 
 
-
-
 @login_required
 def analysis_report(request):
     current_user = UserModuleProfile.objects.filter(user_id=request.user.id)
@@ -1589,53 +1789,76 @@ def analysis_report(request):
     org = str(map(int, org_id_list))
     org = org.replace('[', '').replace(']', '')
 
-    query = "select geoid,(select field_type_id from geo_data where id = geoid),(select geocode from geo_data where id = geoid) from usermodule_catchment_area where user_id = (select id from auth_user where username = '"+str(current_user)+"')"
+    query = "select geoid,(select field_type_id from geo_data where id = geoid),(select geocode from geo_data where id = geoid) from usermodule_catchment_area where user_id = (select id from auth_user where username = '" + str(
+        current_user) + "')"
     df = pandas.DataFrame()
     df = pandas.read_sql(query, connection)
-    
 
     if df.empty:
         query_t = "select * from get_analysis_report('','')"
-          
+
     elif not df.empty:
         geoid = df.geoid.tolist()[0]
         geocode = df.geocode.tolist()[0]
         if df.field_type_id.tolist()[0] == 86:
-            query_t = "select * from get_analysis_report('"+str(org)+"','')"
-            
+            query_t = "select * from get_analysis_report('" + str(org) + "','')"
+
         elif df.field_type_id.tolist()[0] == 88:
-            query_t = "select * from get_analysis_report('"+str(org)+"','"+str(geocode)+"')"
+            query_t = "select * from get_analysis_report('" + str(org) + "','" + str(geocode) + "')"
 
     # csa_list = json.dumps(__db_fetch_values_dict(query_t), default=decimal_date_default)
 
     df = pandas.DataFrame()
-    df = pandas.read_sql(query_t,connection)
-    print df
-    print "DF Pivot table"
-    # print df.pivot_table(values='part_num', rows=['session_order', 'sid'], cols='group_type')
-    df = df.pivot(index='sid',columns='group_type',values='part_num').reset_index()
-    col_list= list(df)
-    col_list.remove('sid')
-    print col_list
-    df['total'] = df[col_list].sum(axis=1)
-    
-    df = df.sort(columns='sid',ascending=True,axis=0)
-    print df
-    print df[col_list].sum(axis=0)
-    df1 = pandas.DataFrame([['Total',df['1'].sum(axis=0),df['2'].sum(axis=0),df['3'].sum(axis=0),df['4'].sum(axis=0),df['total'].sum(axis=0)]],columns = list(df))
-    df = df.append(df1,ignore_index=True).fillna('')
-    df['sid'].replace(1, 'Attended one session',inplace=True)
-    df['sid'].replace(2, 'Attended two session',inplace=True)
-    df['sid'].replace(3, 'Attended three session',inplace=True)
-    df['sid'].replace(4, 'Attended four session',inplace=True)
-    df['sid'].replace(5, 'Attended five session',inplace=True)
-    df['sid'].replace(6, 'Attended six session',inplace=True)
-    df['sid'].replace(7, 'Attended seven session',inplace=True)
-    df['sid'].replace(8, 'Attended eight session',inplace=True)
-    
-    analysis_list = json.dumps(df.to_dict('list'))
+    df = pandas.read_sql(query_t, connection)
+
+    if not df.empty:
+        print df
+        print "DF Pivot table"
+        # print df.pivot_table(values='part_num', rows=['session_order', 'sid'], cols='group_type')
+        df = df.pivot(index='sid', columns='group_type', values='part_num').reset_index()
+        col_list = list(df)
+        col_list.remove('sid')
+        print col_list
+        if not '1' in col_list:
+            df['1'] = '0'
+        if not '2' in col_list:
+            df['2'] = '0'
+        if not '3' in col_list:
+            df['3'] = '0'
+        if not '4' in col_list:
+            df['4'] = '0'
+        df['total'] = df[col_list].sum(axis=1)
+
+        df = df.sort(columns='sid', ascending=True, axis=0)
+        print df
+        print df[col_list].sum(axis=0)
+
+        df1 = pandas.DataFrame([['Total', df['1'].sum(axis=0), df['2'].sum(axis=0), df['3'].sum(axis=0),
+                                 df['4'].sum(axis=0), df['total'].sum(axis=0)]], columns=list(df))
+        df = df.append(df1, ignore_index=True).fillna('')
+        df['sid'].replace(1, 'Attended one session', inplace=True)
+        df['sid'].replace(2, 'Attended two session', inplace=True)
+        df['sid'].replace(3, 'Attended three session', inplace=True)
+        df['sid'].replace(4, 'Attended four session', inplace=True)
+        df['sid'].replace(5, 'Attended five session', inplace=True)
+        df['sid'].replace(6, 'Attended six session', inplace=True)
+        df['sid'].replace(7, 'Attended seven session', inplace=True)
+        df['sid'].replace(8, 'Attended eight session', inplace=True)
+
+        analysis_list = json.dumps(df.to_dict('list'))
+
     return render(request, 'planmodule/analysis_report.html', {
-        'analysis_list':analysis_list
+        'analysis_list': analysis_list
     })
 
 
+def edit_community_orientation(request, instance_id):
+    id_string = 'community_orientation'
+    xform_id = __db_fetch_single_value("select id from logger_xform where id_string ='" + str(id_string) + "'")
+    form_uuid = __db_fetch_single_value("select uuid from logger_xform where id = " + str(xform_id))
+    xml_data = __db_fetch_single_value("select xml from logger_instance where id = " + str(instance_id))
+    xml_data = str(xml_data).replace('\t', '').replace('\n', '').replace("'","\\'")
+    username = request.user.username
+    return render(request, "planmodule/commnity_orientation.html",
+                  {'id_string': id_string, 'xform_id': xform_id, 'username': username,
+                   'form_uuid': form_uuid, 'xml_data': xml_data, 'instance_id': instance_id})

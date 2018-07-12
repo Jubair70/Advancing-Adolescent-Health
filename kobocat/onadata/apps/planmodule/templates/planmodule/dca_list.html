@@ -1,4 +1,4 @@
-{% extends 'base_test.html' %}
+    {% extends 'base_test.html' %}
 {% load i18n %}
 {% block additional-headers %}
    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
@@ -94,9 +94,18 @@
 
         var tbody = '';
         var dca_list = {{ dca_list|safe }};
+        var done = []
 
         for (var idx in dca_list) {
-            tbody += '<tr><td>' + dca_list[idx].registration_date + '</td><td>' + dca_list[idx].district + '</td><td>' + dca_list[idx].upazilla + '</td><td>' + dca_list[idx].activity_name + '</td><td>' + dca_list[idx].activity_level + '</td><td>' + dca_list[idx].males + '</td><td>' + dca_list[idx].females + '</td><td class="td-center"><a class="tooltips" data-container="body" data-placement="top" data-original-title="Edit" href="/planmodule/edit_dca_form/' + dca_list[idx].id + '"><i class="fa fa-2x fa-pencil-square-o"></i></a><a class="delete-item tooltips" data-container="body"  data-placement="top" data-toggle="modal" data-target="#confirm-delete" data-original-title="Delete" href="#" data-href="/planmodule/delete_dca_form/' + dca_list[idx].id + '"><i class="fa fa-2x fa-trash-o"></i></a></td></tr>';
+            if(done.indexOf(dca_list[idx].id) >= 0)
+                tbody += '<tr><td style="border-top-color: white; border-bottom-color: white;"></td><td style="border-top-color: white; border-bottom-color: white;"></td><td style="border-top-color: white; border-bottom-color: white;"></td><td>' + dca_list[idx].activity_name + '</td><td>' + dca_list[idx].activity_level + '</td><td>' + dca_list[idx].males + '</td><td>' + dca_list[idx].females + '</td><td class="td-center" style="border-top-color: white; border-bottom-color: white;"></td></tr>';
+            else
+            {
+                tbody += '<tr><td style="border-top-color: black; border-bottom-color: white;">' + dca_list[idx].registration_date + '</td><td style="border-top-color: black; border-bottom-color: white;">' + dca_list[idx].district + '</td><td style="border-top-color: black; border-bottom-color: white;">' + dca_list[idx].upazilla + '</td><td style="border-top-color: black;">' + dca_list[idx].activity_name + '</td><td style="border-top-color: black;">' + dca_list[idx].activity_level + '</td><td style="border-top-color: black;">' + dca_list[idx].males + '</td><td style="border-top-color: black;">' + dca_list[idx].females + '</td><td class="td-center" style="border-top-color: black; border-bottom-color: white;"><a class="tooltips" data-container="body" data-placement="top" data-original-title="Edit" href="/planmodule/edit_dca_form/' + dca_list[idx].id + '"><i class="fa fa-2x fa-pencil-square-o"></i></a><a class="delete-item tooltips" data-container="body"  data-placement="top" data-toggle="modal" data-target="#confirm-delete" data-original-title="Delete" href="#" data-href="/planmodule/delete_dca_form/' + dca_list[idx].id + '"><i class="fa fa-2x fa-trash-o"></i></a></td></tr>';
+                done.push(dca_list[idx].id)
+            }
+            console.log(done)
+
         }
 
         $("#all_info_table").find('tbody').html(tbody);

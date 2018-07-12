@@ -4,6 +4,7 @@ from onadata.apps.planmodule import views, views_api
 
 urlpatterns = patterns('',
                        url(r'^$', views.index, name='index'),
+url(r'^dashboard/$', views.dashboard, name='dashboard'),
                        url(r'^facility_list/$', views.facility_list, name='facility_list'),
                        url(r'^add_facility_form/$', views.add_facility_form, name='add_facility_form'),
                        url(r'^insert_facility_form/$', views.insert_facility_form, name='insert_facility_form'),
@@ -14,7 +15,9 @@ urlpatterns = patterns('',
                            name='delete_facility_form'),
                        url(r'^getUpazilas/$', views.getUpazilas, name='getUpazilas'),
                        url(r'^getUnions/$', views.getUnions, name='getUnions'),
+                        url(r'^getUnions_asd/$', views.getUnions_asd, name='getUnions_asd'),
                        url(r'^getType/$', views.getType, name='getType'),
+                        url(r'^getDashboardData/$', views.getDashboardData, name='getDashboardData'),
 
                        url(r'^scorecard_list/$', views.scorecard_list, name='scorecard_list'),
                        url(r'^add_scorecard_form/$', views.add_scorecard_form, name='add_scorecard_form'),
@@ -57,6 +60,8 @@ urlpatterns = patterns('',
                        url(r'^get_referrals_list/$', views_api.get_referrals_list),
                        url(r'^commnity_orientation_form/$', views_api.commnity_orientation_form),
                         url(r'^delete_community_orientation/(?P<data_id>\d+)/$', views.delete_community_orientation, name='delete_community_orientation'),
+
+                url(r'^edit_community_orientation/(?P<instance_id>\d+)/$', views.edit_community_orientation, name='edit_community_orientation'),
 
                        url(r'^mis_report_district_list/$', views.mis_report_district_list,
                            name='mis_report_district_list'),

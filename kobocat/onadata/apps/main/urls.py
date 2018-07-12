@@ -50,7 +50,7 @@ urlpatterns = patterns(
 
 
     ################################# cup urls end ###################################
-    url(r'^$', 'onadata.apps.main.views.survey_summary'),
+    url(r'^$', 'onadata.apps.planmodule.views.dashboard'),
     url(r'^delete-instance/$', 'onadata.apps.viewer.views.delete_instance'),
     url(r"^update-instance-status/$", 'onadata.apps.main.views.instance_status_update'),
 

@@ -414,7 +414,7 @@ def quryExecution(query):
 
 
 def commnity_orientation_form(request):
-    id_string = 'commnity_orientation'
+    id_string = 'community_orientation'
     query = "SELECT id, uuid  FROM logger_xform where id_string = 'community_orientation'"
     queryResult = quryExecution(query)
     xform_id = queryResult[0]
@@ -593,7 +593,7 @@ def submitXMLData(request):
 
     files = {'xml_submission_file': open(str(f.name), 'rb')}
     requests.post('http://' + request.META.get('HTTP_HOST') + '/' + request.user.username + '/submission', files=files)
-    messages.success(request, '<i class="fa fa-check-circle"></i> Community Orientation Info has been added successfully!',
+    messages.success(request, '<i class="fa fa-check-circle"></i> Action Completed   successfully!',
                              extra_tags='alert-success crop-both-side')
     return HttpResponse("success!")
 

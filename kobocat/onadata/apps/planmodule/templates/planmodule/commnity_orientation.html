@@ -126,7 +126,7 @@
                     </div>
 
                     <div class="form-group col-md-3"><label>Upazila</label>
-                        <select ng-model="vms.model.upazila"
+                        <select ng-model="vms.model.upazila" id="upazila"
                                 name="upazila"
                                 ng-change="getExternalOptions('/planmodule/get_unions/',vms.model.upazila, 'opt_union')"
                                 ng-options="option.geocode as option.field_name for option in opt_upazila"
@@ -134,6 +134,7 @@
                                 validation="required"
                                 class="form-control">
                             <option value>-- Select Upazila --</option>
+
                         </select>
                         <span class="field_error" id="upazila_error"></span>
                     </div>
@@ -200,13 +201,14 @@
                     </div>
 
 
-                    <div ng-repeat="name in data.names track by $index" id="rpt_participant_info"
-                         class="iterator_fields">
+                    <div ng-repeat="name in data.names track by $index" id="rpt_participant_info" name = "rpt_participant_info"
+                         class="iterator_fields form-group col-lg-12">
 
                         <div class="col-lg-3">
                             <div class="form-group"><label><span ng-show="vms.model.language=='bangla'">অংশগ্রহণকারীর নাম</span></label><input
                                     ng-model="vms.model.participant_info__participant_name[$index]"
                                     name="participant_info__participant_name__{$$index$}"
+                                    id="participant_info__participant_name__{$$index$}"
                                     validation-error-to="participant_info__participant_name_error"
                                     validation="required" type="text" class="form-control"/><span
                                     id="participant_info__participant_name__{$$index$}_error"
@@ -217,7 +219,7 @@
                             <div class="form-group"><label><span
                                     ng-show="vms.model.language=='bangla'">ওয়ার্ড নং</span></label><input
                                     ng-model="vms.model.participant_info__ward[$index]"
-                                    name="participant_info__ward__{$$index$}"
+                                    name="participant_info__ward__{$$index$}" id="participant_info__ward__{$$index$}"
                                     validation-error-to="participant_info__ward__{$$index$}_error"
                                     validation="required" type="number" class="form-control"/><span
                                     id="participant_info__ward__{$$index$}_error" class="field_error"></span></div>
@@ -228,7 +230,7 @@
                             <div class="form-group"><label><span
                                     ng-show="vms.model.language=='bangla'">গ্রাম</span></label><input
                                     ng-model="vms.model.participant_info__village[$index]"
-                                    name="participant_info__village__{$$index$}"
+                                    name="participant_info__village__{$$index$}" id="participant_info__village__{$$index$}"
                                     validation-error-to="participant_info__village__{$$index$}_error"
                                     validation="required"
                                     type="text" class="form-control"/><span
@@ -243,7 +245,7 @@
                                 <select validation-error-to="participant_info__community_representative_type__{$$index$}_error"
                                         class="form-control"
                                         ng-required="vms.model.orientation_type==1"
-                                        name="participant_info__community_representative_type__{$$index$}"
+                                        name="participant_info__community_representative_type__{$$index$}" id="participant_info__community_representative_type__{$$index$}"
                                         ng-model="vms.model.participant_info__community_representative_type[$index]">
                                     <option value="">-- Select --</option>
                                     <option value="1"> অভিভাবক</option>
@@ -266,6 +268,7 @@
                                         class="form-control"
                                         ng-required="vms.model.orientation_type==3"
                                         name="participant_info__married_adolescent_or_couple_type__{$$index$}"
+                                        id="participant_info__married_adolescent_or_couple_type__{$$index$}"
                                         ng-model="vms.model.participant_info__married_adolescent_or_couple_type[$index]">
                                     <option value="">-- Select --</option>
                                     <option value="1"> বিবাহিত কিশোরী</option>
@@ -285,6 +288,7 @@
                                         class="form-control"
                                         ng-required="vms.model.orientation_type==4"
                                         name="participant_info__issue_based_meeting_present_type__{$$index$}"
+                                        id="participant_info__issue_based_meeting_present_type__{$$index$}"
                                         ng-model="vms.model.participant_info__issue_based_meeting_present_type[$index]">
                                     <option value="">-- Select --</option>
                                     <option value="1"> অভিভাবক</option>
@@ -300,6 +304,7 @@
                                     ng-show="vms.model.language=='bangla'">মোবাইল নং</span></label><input
                                     ng-model="vms.model.participant_info__mobile[$index]"
                                     name="participant_info__mobile__{$$index$}"
+                                     id="participant_info__mobile__{$$index$}"
                                     validation-error-to="participant_info__mobile__{$$index$}_error"
                                     validation="pattern=/^[0-9]{11}$/:alt={u'bangla': u'11 Digit'}" type="text"
                                     class="form-control"/><span id="participant_info__mobile__{$$index$}_error"
@@ -319,8 +324,7 @@
 
 
                     <div class="form-group col-lg-3">
-                        <label><span
-                                ng-show="vms.model.language=='bangla'">অঙ্গিকার প্রদান করেছেন কি?</span></label>
+                        <label><span ng-show="vms.model.language=='bangla'">অঙ্গিকার প্রদান করেছেন কি?</span></label>
                         <select validation-error-to="promised_error" class="form-control"
                                 validation="required" name="promised" ng-model="vms.model.promised">
                             <option value="">-- Select --</option>
@@ -384,7 +388,7 @@
 
 
 <script type="text/javascript">
-
+    var sid = 0;
     var id_string = '{{ id_string }}';
 
     function generateXML(inputObj, instance_id) {
@@ -471,6 +475,7 @@
     });
 
     app.controller('myCtrl', ['$scope', 'ValidationService', '$http', 'Upload', '$timeout', function ($scope, ValidationService, $http, Upload, $timeout) {
+
         var vms = this;
         vms.model = {};
         // use the ValidationService only to declare the controllerAs syntax
@@ -519,6 +524,8 @@
         vms.model.country = 'Bangladesh';
         vms.model.language = 'bangla';
 
+
+
         $scope.data = {
             names: [{name: ""}]
         };
@@ -528,15 +535,23 @@
         $scope.addRow = function (index) {
             var name = {name: ""};
             if ($scope.data.names.length <= index + 1) {
-                $scope.data.names.splice(index + 1, 0, name);
+{#                $scope.data.names.push($scope.)#}
+{#                    $scope.data.names.push(name);#}
+                $scope.data.names.splice(index + 1, 0, name)
+                ;
             }
+
         };
+
+
 
         $scope.deleteRow = function ($event, name) {
             var index = $scope.data.names.indexOf(name);
             if ($event.which == 1)
                 $scope.data.names.splice(index, 1);
         }
+
+
 
 
         function replaceAll(str, mapObj) {
@@ -632,7 +647,7 @@
                 }
             });
             var generatedXML = generateXML(inputStore, edit_instance_id);
-		console.log(generatedXML);
+
 
             return generatedXML
         };
@@ -710,27 +725,64 @@
         }
 
 
+        function lookup_v2(key, loop_element_name, index) {
+
+            value = jsonObj[id_string][key];
+            if (typeof value == 'undefined') {
+                if (key in jsonObj[id_string][loop_element_name][index]) {
+
+                    return jsonObj[id_string][loop_element_name][index][key]
+                }
+
+
+            }
+            return value
+
+        }
+
+
         $scope.fillForm = function () {
+
+            console.log(jsonObj)
+            for(i=0;i<jsonObj[id_string]['participant_info'].length-1;i++)
+                $scope.addRow(i);
+
+            $scope.$apply();
+
             angular.element(document.querySelector('#edit_instance_id')).val({{ instance_id }});
+
             angular.forEach($scope.dynamic_form, function (element, name) {
+
                 if (!name.startsWith('$')) {
+                     var loop_element_name=""
+                    var index = 0;
+
                     if (name.indexOf('__') > 0) {
-                        var element_name = name.split('__')[name.split('__').length - 2];
-                    } else {
+                        var array_of_element = name.split('__')
+                         loop_element_name = array_of_element[0];
+                        var element_name = array_of_element[1];
+                         index = array_of_element[2];
+                    }
+                    else {
                         var element_name = name;
                     }
-                    console.log(name);
-                    element_arr = lookup(jsonObj, element_name);
+                    element_arr = lookup_v2(element_name,loop_element_name,index);
                     if (element_arr != null) {
-                        element.$setViewValue(element_arr[1]);
+                        element.$setViewValue(element_arr);
                         element.$render();
-                        console.log(element);
                     }
                 }
             });
+
+
+
+
+
         }
 
+
         angular.element(document).ready(function () {
+
             $('.page-sidebar, .header').on('click', '.sidebar-toggler', function (e) {
                 var body = $('body');
                 var sidebar = $('.page-sidebar');
@@ -759,34 +811,37 @@
                 //runResponsiveHandlers();
             });
 
+{#            $scope.addRow(0);#}
             if (typeof jsonObj !== "undefined" && jsonObj !== null) {
+
                 $scope.fillForm();
+
             }
         });
 
 
         /*************************** Rubbbish Code ***********************************/
 
-        $scope.$watch('opt_upazila', function (newValue, oldValue) {
-            if (!newValue || newValue === oldValue) return;
-            angular.forEach($scope.dynamic_form, function (element, name) {
-                if (name.startsWith('upazila')) {
-                    element.$setViewValue(parseInt(vms.model.upazila));
-                    element.$render();
-                }
-            });
-        });
-
-
-        $scope.$watch('opt_union', function (newValue, oldValue) {
-            if (!newValue || newValue === oldValue) return;
-            angular.forEach($scope.dynamic_form, function (element, name) {
-                if (name.startsWith('union')) {
-                    element.$setViewValue(parseInt(vms.model.union));
-                    element.$render();
-                }
-            });
-        });
+{#        $scope.$watch('opt_upazila', function (newValue, oldValue) {#}
+{#            if (!newValue || newValue === oldValue) return;#}
+{#            angular.forEach($scope.dynamic_form, function (element, name) {#}
+{#                if (name.startsWith('upazila')) {#}
+{#                    element.$setViewValue(parseInt(vms.model.upazila));#}
+{#                    element.$render();#}
+{#                }#}
+{#            });#}
+{#        });#}
+{##}
+{##}
+{#        $scope.$watch('opt_union', function (newValue, oldValue) {#}
+{#            if (!newValue || newValue === oldValue) return;#}
+{#            angular.forEach($scope.dynamic_form, function (element, name) {#}
+{#                if (name.startsWith('union')) {#}
+{#                    element.$setViewValue(parseInt(vms.model.union));#}
+{#                    element.$render();#}
+{#                }#}
+{#            });#}
+{#        });#}
 
 
     }]);
@@ -801,23 +856,34 @@
         return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     }
 
+
+
     function lookup(obj, k) {
+        console.log(obj,k)
+
         for (key in obj) {
 
             value = obj[key];
             if (k == key) return [k, value];
 
             if (type(value) == "Object") {
+
                 var y = lookup(value, k);
                 if (y && y[0] == k) return y;
             }
             if (type(value) == "Array") {
+                console.log(value,key)
                 // for..in doesn't work the way you want on arrays in some browsers
                 //
+{#                console.log("Array :");#}
+{#                console.log(value,k);#}
                 for (var i = 0; i < value.length; ++i) {
+
                     var x = lookup(value[i], k);
                     if (x && x[0] == k) return x;
+
                 }
+
             }
         }
 
@@ -846,9 +912,9 @@
 
     //edit portion
     xml_string = '{{ xml_data|safe }}';
-
     var x2js = new X2JS();
     var jsonObj = x2js.xml_str2json(xml_string);
+
 
 </script>
 <script src="{{ STATIC_URL }}assets/scripts/app.js"></script>
@@ -873,7 +939,7 @@
         );
 
         if ($('.sub-menu-li').hasClass('active')) {
-            $('.arrow').parent().parent().addClass('active');
+            $('.active').parent().parent().addClass('active');
         }
 
         App.init();

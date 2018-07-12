@@ -83,8 +83,8 @@
 
         
 
-        for (i=0;i<9;i++) {
-            if(i==8)
+        for (i=0;i<Object.keys(analysis_list).length&& i<analysis_list['sid'].length;i++) {
+            if(i==analysis_list['sid'].length-1)
             {
                 tbody += '<tr><td style="border: 2px solid blue; border-right-color: #ddd;">' + analysis_list['sid'][i] + '</td><td class="td-center" style="border: 2px solid blue; border-right-color: #ddd; border-left-color: #ddd;">' + analysis_list['2'][i] + '</td><td class="td-center" style="border: 2px solid blue; border-right-color: white; border-left-color: #ddd;">' + analysis_list['1'][i] + '</td><td class="td-center" style="border: 2px solid blue; border-right-color: #ddd; border-left-color: #ddd;">' + analysis_list['4'][i] + '</td><td class="td-center" style="border: 2px solid blue; border-right-color: #ddd; border-left-color: #ddd;">' + analysis_list['3'][i] + '</td><td class="td-center" style="border: 2px solid blue; border-left-color: #ddd;">' + analysis_list['total'][i] + '</td></tr>';
             }
