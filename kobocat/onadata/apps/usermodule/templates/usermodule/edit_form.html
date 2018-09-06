@@ -62,6 +62,7 @@
                                        placeholder="Geo Code" required>
 
                                 </div><br>
+                                <span style="color:red;font-weight:bold" id ="alert_empty_geocode">This field can't be empty</span>
                                 <span style="color:red;font-weight:bold" id ="alert_geocode">Duplicate Geocode Not Accepted</span>
                             </div>
 
@@ -311,7 +312,7 @@
                 }
             });
         }
-
+        $('#alert_empty_geocode').hide();
         $('#alert_geocode').hide();
         var geocode={{ all_geocode|safe }};
 
@@ -319,6 +320,7 @@
 
 
         $('#geocode').on('keyup', function () {
+            $('#alert_empty_geocode').hide();
             var geo_value = parent_geocode.concat($('#geocode').val());
             var curr_parent = $('.field_parent').children().last().val();
 
@@ -342,28 +344,39 @@
             var geo_value = parent_geocode.concat($('#geocode').val());
             var curr_parent = $('.field_parent').children().last().val();
 
-            if (curr_parent == prev_parent||typeof curr_parent=="undefined") {
-                if (set_geocode != geo_value && geocode.includes(geo_value)) {
-                    $('#alert_geocode').show();
-                    return false;
+            if($('#geocode').val()=='')
+            {
+                $('#alert_empty_geocode').show();
+                return false
+            }
+            else
+            {
+                $('#alert_empty_geocode').hide();
+                if (curr_parent == prev_parent || typeof curr_parent == "undefined") {
+                    if (set_geocode != geo_value && geocode.includes(geo_value)) {
+                        $('#alert_geocode').show();
+                        return false;
+                    }
+                    else {
+                        $('#geocode').val(parent_geocode.concat($('#geocode').val()));
+                        $('#alert_geocode').hide();
+                        return true;
+                    }
                 }
                 else {
-                    $('#geocode').val(parent_geocode.concat($('#geocode').val()));
-                    $('#alert_geocode').hide();
-                    return true;
+                    if (geocode.includes(geo_value)) {
+                        $('#alert_geocode').show();
+                        return false;
+                    }
+                    else {
+                        $('#geocode').val(parent_geocode.concat($('#geocode').val()));
+                        $('#alert_geocode').hide();
+                        return true;
+                    }
                 }
             }
-            else {
-                if (geocode.includes(geo_value)) {
-                    $('#alert_geocode').show();
-                    return false;
-                }
-                else {
-                    $('#geocode').val(parent_geocode.concat($('#geocode').val()));
-                    $('#alert_geocode').hide();
-                    return true;
-                }
-            }
+
+
         });
 
 

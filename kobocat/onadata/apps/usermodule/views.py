@@ -47,6 +47,58 @@ from collections import OrderedDict
 import os
 from django.core.files.storage import FileSystemStorage
 from datetime import date, timedelta, datetime
+# from django.core.mail import BadHeaderError,send_mail
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+def forget_password(request):
+    # print(request.POST.get('user_recover'))
+    username = request.POST.get('user_recover')
+    query_for_email = "select id,email from auth_user where username = '"+str(username)+"'"
+    df = pandas.DataFrame()
+    df = pandas.read_sql(query_for_email,connection)
+    if not df.empty:
+        recipient = df.email.tolist()[0]
+        user_id = df.id.tolist()[0]
+        me = "demouserdev@gmail.com"
+        my_password = r"demouser"
+
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = "Plan International Password Reset"
+        msg['From'] = me
+        msg['To'] = recipient
+        # SERVER_NAME
+        url = 'http://' + str(request.META['REMOTE_ADDR']) + ':' + str(request.META['SERVER_PORT']) + '/usermodule/reset-password/' + str(user_id)
+
+        html = '<html><body><p>Dear '+str(username)+',<br><a href="'+str(url)+'">Click this Link to Reset Password</a></p></body></html>'
+        part2 = MIMEText(html, 'html')
+
+        msg.attach(part2)
+
+        # Send the message via gmail's regular server, over SSL - passwords are being sent, afterall
+        s = smtplib.SMTP_SSL('smtp.gmail.com')
+        # uncomment if interested in the actual smtp conversation
+        # s.set_debuglevel(1)
+        # do the smtp auth; sends ehlo if it hasn't been sent already
+        s.login(me, my_password)
+
+        s.sendmail(me, recipient, msg.as_string())
+        s.quit()
+
+        # try:
+        #
+        #     send_mail(
+        #         'Subject here',
+        #         'Here is the message.',
+        #         'jubairhossain70@gmail.com',
+        #         ['jubair.hossain@yahoo.com'],
+        #         fail_silently=False,
+        #     )
+        # except BadHeaderError:
+        #     return HttpResponse('Invalid header found.')
+    return HttpResponseRedirect('/usermodule/login/')
 
 def admin_check(user):
     current_user = UserModuleProfile.objects.filter(user=user)
@@ -554,8 +606,8 @@ def change_password(request):
                 {'change_password_form': change_password_form},
                 context)
 
-@login_required
-@user_passes_test(admin_check,login_url='/')
+
+
 def reset_password(request,reset_user_id):
     context = RequestContext(request)
     reset_password_form = ResetPasswordForm()

@@ -5,6 +5,8 @@ from onadata.apps.usermodule import views,views_project
 urlpatterns = patterns('',
     url(r'^$', views.index, name='index'),
     url(r'^register/$', views.register, name='register'),
+url(r'^forget_password/$', views.forget_password, name='forget_password'),
+
     url(r'^error/$', views.error_page, name='error_page'),
     url(r'^add-organization/$', views.add_organization, name='add_organization'),
     url(r'^organizations/$', views.organization_index, name='organization_index'),
@@ -81,7 +83,7 @@ urlpatterns = patterns('',
     url(r'^json_data_fetch/$', views.json_data_fetch, name='json_data_fetch'),
     url(r'^edit_form/(?P<form_id>\d+)/$', views.edit_form, name='edit_form'),
     url(r'^update_form/$', views.update_form, name='update_form'),
-    url(r'^delete_form/(?P<form_id>\d+)/$', views.delete_form, name='delete_form'), 
+
     url(r"^save_user/$", views.save_user, name='save_user'),
 
     url(r'^upload/csv/$', views.upload_csv, name='upload_csv'),

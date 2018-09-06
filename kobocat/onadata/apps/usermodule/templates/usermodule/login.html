@@ -28,11 +28,14 @@
         <!-- RECOVERY -->
         <div class="recovery">
             <h2>Password Recovery</h2>
-            <p>Enter either the <strong>email address</strong> or <strong>username</strong> on the account and <strong>click Submit</strong></p>
+            <p>Enter <strong>username</strong> on the account and <strong>click Submit</strong></p>
             <p>We'll email instructions on how to reset your password.</p>
-            <form class="recovery-form" action="" method="post">
-                <input type="text" class="input" id="user_recover" placeholder="Enter Email or Username Here">
-                <input type="submit" class="button" value="Submit">
+            <form class="recovery-form" action="/usermodule/forget_password/" method="post">
+                {% csrf_token %}
+
+                <input type="text" class="input" name="user_recover" id="user_recover" placeholder="Enter Username Here">
+{#                <input type="submit" class="button" value="Submit">#}
+                <button type="submit" class="button">Submit</button>
             </form>
             <p class="mssg">An email has been sent to you with further instructions.</p>
         </div>
@@ -107,7 +110,7 @@
                             <input type="hidden" id="redirect_url" name="redirect_url" value="{{redirect_url}}"/>
                             <button type="submit" class="button">Login</button>
                         </form>
-                        <div class="help-action" hidden>
+                        <div class="help-action">
                             <p><i class="fa fa-arrow-left" aria-hidden="true"></i><a class="forgot" href="#">Forgot your password?</a></p>
                         </div>
                     </div>
@@ -210,9 +213,8 @@ $(function() {
 });
 
 // DISPLAY MSSG
-$(function() {
-    $('.recovery .button').on('click', function(event) {
-        event.preventDefault();
+$('.recovery .button').on('click', function(event) {
+{#        event.preventDefault();#}
         $('.recovery .mssg').addClass('animate');
         setTimeout(function() {
             $('.recovery').swapClass('open', 'closed');
@@ -221,7 +223,6 @@ $(function() {
             $('.recovery .mssg').removeClass('animate');
         }, 2500);
     });
-});
 
 
 //# sourceURL=pen.js

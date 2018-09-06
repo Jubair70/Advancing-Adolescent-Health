@@ -55,6 +55,7 @@
                                        placeholder="Geo Code" required>
 
                                 </div><br>
+                                <span style="color:red;font-weight:bold" id ="alert_empty_geocode">This field can't be empty</span>
                                 <span style="color:red;font-weight:bold" id ="alert_geocode">Duplicate Geocode Not Accepted</span>
                             </div>
 
@@ -216,8 +217,10 @@
         var division_geocode = {{ division_geocode|safe }};
         geocode = division_geocode
         console.log(geocode);
+        $('#alert_empty_geocode').hide();
         $('#alert_geocode').hide();
         $('#geocode').on('keyup',function () {
+            $('#alert_empty_geocode').hide( );
            var geo_value = parent_geocode.concat($('#geocode').val());
            if(geocode.includes(geo_value))
                 $('#alert_geocode').show();
@@ -227,7 +230,13 @@
 
         $('#submit').on('click',function () {
             var geo_value = parent_geocode.concat($('#geocode').val());
-            if(geocode.includes(geo_value))
+
+            if($('#geocode').val()=='')
+            {
+                $('#alert_empty_geocode').show();
+                return false
+            }
+            else if(geocode.includes(geo_value))
             {
                 $('#alert_geocode').show();
                 return false;
@@ -236,6 +245,7 @@
             else {
                 $('#geocode').val(parent_geocode.concat($('#geocode').val()));
                 $('#alert_geocode').hide();
+                $('#alert_empty_geocode').hide();
                 return true;
             }
 

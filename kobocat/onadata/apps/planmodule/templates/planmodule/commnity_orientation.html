@@ -157,7 +157,7 @@
                                 name="pngo" ng-model="vms.model.pngo">
                             <option value="">-- Select --</option>
                             <option value="LAMB">LAMB</option>
-                            <option value="ESSDO">ESDO</option>
+                            <option value="ESDO">ESDO</option>
                         </select>
                         <span id="pngo_error" class="field_error"></span>
                     </div>
@@ -310,37 +310,60 @@
                                     class="form-control"/><span id="participant_info__mobile__{$$index$}_error"
                                                                 class="field_error"></span></div>
                         </div>
+                        <div class="col-lg-3">
+                            <div class="form-group">
+                                <label><span
+                                        ng-show="vms.model.language=='bangla'">অঙ্গিকার প্রদান করেছেন কি?</span></label>
+                                <select validation-error-to="participant_info____{$$index$}_promised_error"
+                                        ng-model="vms.model.participant_info__promised[$index]" validation="required"
+                                        name="participant_info__promised__{$$index$}" class="form-control">
+                                    <option value>-- Select --</option>
+                                    <option value="1">হ্যাঁ</option>
+                                    <option value="0">না</option>
+                                </select>
+                                <span class="field_error" id="participant_info__promised_error"></span>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="form-group"><label><span
+                                    ng-show="vms.model.language=='bangla'">মন্তব্য</span></label><input
+                                    ng-model="vms.model.participant_info__remarks[$index]"
+                                    validation-error-to="participant_info__{$$index$}_remarks_error" type="text"
+                                    name="participant_info__remarks__{$$index$}" class="form-control"/><span class="field_error"
+                                                                                                 id="participant_info__remarks_error"></span>
+                            </div>
+                        </div>
 
 
-                        <span style="top: -3px;position: relative; left: 16px" ng-click="addRow($index)"
+                        <span style="top: 35px;position: relative; left: 16px" ng-click="addRow($index)"
                               ng-show="$last"><i
                                 class="fa fa-2x fa-plus-circle"
-                                aria-hidden="true"></i></span><span style="top: -3px;position: relative; left: 16px"
+                                aria-hidden="true"></i></span><span style="top: 35px;position: relative; left: 16px"
                                                                     ng-click="deleteRow($event,name)"
                                                                     ng-show="$index != 0"><i
                             class="fa fa-2x fa-minus-circle"
                             aria-hidden="true"></i></span>
                     </div>
 
-
-                    <div class="form-group col-lg-3">
-                        <label><span ng-show="vms.model.language=='bangla'">অঙ্গিকার প্রদান করেছেন কি?</span></label>
-                        <select validation-error-to="promised_error" class="form-control"
-                                validation="required" name="promised" ng-model="vms.model.promised">
-                            <option value="">-- Select --</option>
-                            <option value="1">হ্যাঁ</option>
-                            <option value="0">না</option>
-                        </select>
-                        <span id="promised_error" class="field_error"></span>
-                    </div>
-
-                    <div class="col-lg-3">
-                        <div class="form-group"><label><span
-                                ng-show="vms.model.language=='bangla'">মন্তব্য</span></label><input
-                                ng-model="vms.model.remarks" class="form-control" type="text" name="remarks"
-                                validation-error-to="remarks_error"/><span id="remarks_error"
-                                                                           class="field_error"></span></div>
-                    </div>
+{##}
+{#                    <div class="form-group col-lg-3">#}
+{#                        <label><span ng-show="vms.model.language=='bangla'">অঙ্গিকার প্রদান করেছেন কি?</span></label>#}
+{#                        <select validation-error-to="promised_error" class="form-control"#}
+{#                                validation="required" name="promised" ng-model="vms.model.promised">#}
+{#                            <option value="">-- Select --</option>#}
+{#                            <option value="1">হ্যাঁ</option>#}
+{#                            <option value="0">না</option>#}
+{#                        </select>#}
+{#                        <span id="promised_error" class="field_error"></span>#}
+{#                    </div>#}
+{##}
+{#                    <div class="col-lg-3">#}
+{#                        <div class="form-group"><label><span#}
+{#                                ng-show="vms.model.language=='bangla'">মন্তব্য</span></label><input#}
+{#                                ng-model="vms.model.remarks" class="form-control" type="text" name="remarks"#}
+{#                                validation-error-to="remarks_error"/><span id="remarks_error"#}
+{#                                                                           class="field_error"></span></div>#}
+{#                    </div>#}
 
 
                     <div class="col-md-12">
@@ -590,6 +613,8 @@
             "participant_info__participant_name": "participant_info",
             "participant_info__village": "participant_info",
             "participant_info__community_representative_type": "participant_info",
+             "participant_info__remarks": "participant_info",
+            "participant_info__promised": "participant_info",
             "remarks": "root",
             "union_name": "root",
             "participant_info__ward": "participant_info",
@@ -599,7 +624,8 @@
             "pngo": "root",
             "orientation_type": "root",
 
-        }
+        };
+
 
         var inputStore = {};
         $scope.ct = Math.floor(Date.now() / 1000);
@@ -729,12 +755,13 @@
 
             value = jsonObj[id_string][key];
             if (typeof value == 'undefined') {
-                if (key in jsonObj[id_string][loop_element_name][index]) {
-
+                if (typeof jsonObj[id_string][loop_element_name][index] !='undefined'  && key in jsonObj[id_string][loop_element_name][index]) {
                     return jsonObj[id_string][loop_element_name][index][key]
                 }
-
-
+                else if (key in jsonObj[id_string][loop_element_name])
+                {
+                    return jsonObj[id_string][loop_element_name][key]
+                }
             }
             return value
 
